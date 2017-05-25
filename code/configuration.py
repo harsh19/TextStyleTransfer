@@ -9,4 +9,4 @@ data_dir = "../data/"
 use_reverse_encoder=True
 display_step=1
 sample_step=2
-save_step = 5
+save_step = 4

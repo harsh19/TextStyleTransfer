@@ -19,6 +19,8 @@ import sys
 python main.py train <num_of_iters> <model_name>
 OR
 python main.py inference <saved_model_path>
+OR
+python main.py debug
 '''
 
 class PreProcessing:
@@ -180,8 +182,14 @@ def main():
 	params['vocab_size'] = preprocessing.vocab_size
 	
 	# train
+	mode=sys.argv[1]
+	print "mode = ",mode
+
 	train = data['train']
-	lim=params['batch_size'] * ( len(train[0])/params['batch_size'] )
+	if mode=="debug":
+		lim = 64
+	else:
+		lim=params['batch_size'] * ( len(train[0])/params['batch_size'] )
 	if lim!=-1:
 		train_encoder_inputs, train_decoder_inputs, train_decoder_outputs = train
 		train_encoder_inputs = train_encoder_inputs[:lim]
@@ -202,11 +210,14 @@ def main():
 		params['encoder_embeddings_matrix'] = encoder_embedding_matrix 
 		params['decoder_embeddings_matrix'] = decoder_embedding_matrix 
 
-	mode=sys.argv[1]
-	print "mode = ",mode
-	if mode=='train':
-		training_iters = int(sys.argv[2])
-		model_name = sys.argv[3]
+
+	if mode=='train' or mode=="debug":
+		if mode=="train":
+			training_iters = int(sys.argv[2])
+			model_name = sys.argv[3]
+		else:
+			training_iters = 5
+			model_name = "test"
 		params['training_iters'] = training_iters
 		params['use_reverse_encoder'] = config.use_reverse_encoder
 		params['model_name'] = model_name
