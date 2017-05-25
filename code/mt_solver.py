@@ -35,6 +35,14 @@ class Solver:
 		self.token_output_sequences_decoder_placeholder_list = []
 		self.cost_list = []
 		self.mask_list = []
+		self.optimizer_list = []
+
+		optimizer_typ =  "adam" #"sgd" #"adam"
+		if "optimizer_typ" in config:
+			optimizer_typ = config['optimizer_typ']
+		self.optimizer_typ = optimizer_typ
+		learning_rate= 0.001 #0.001
+		print "optimizer_typ, learning_rate= ", optimizer_typ, learning_rate
 
 		if mode=='train':
 			#########################
@@ -49,21 +57,27 @@ class Solver:
 
 				self.encoder_outputs_list.append(encoder_outputs)
 				self.cost_list.append( self.model_obj.cost )
+				if self.optimizer_typ=="sgd":
+					optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
+					train_op = optimizer
+				else: # adam
+					optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+					grads = tf.gradients(cost, tf.trainable_variables())
+					grads_and_vars = list(zip(grads, tf.trainable_variables()))
+					train_op = optimizer.apply_gradients(grads_and_vars=grads_and_vars)
+				self.optimizer_list.append(train_op)
 				reuse=True
+
 			self.encoder_outputs = encoder_outputs = self.model_obj.getEncoderModel(config, mode='inference', reuse=True )
 			decoder_outputs_inference, encoder_outputs = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, mode='inference', reuse=True)	
 			self.decoder_outputs_inference = decoder_outputs_inference
-
 			self.token_lookup_sequences_placeholder_list  = self.model_obj.token_lookup_sequences_placeholder_list
 			self.token_lookup_sequences_decoder_placeholder_list = self.model_obj.token_lookup_sequences_decoder_placeholder_list
 			self.token_output_sequences_decoder_placeholder_list = self.model_obj.token_output_sequences_decoder_placeholder_list
 			self.mask_list = self.model_obj.masker_list
 		else:
-			#config['batch_size'] = 5
 			encoder_outputs = self.model_obj.getEncoderModel(config, mode='inference', reuse=reuse)
-			#print "encoder_outputs.shaoe :::: ",len(encoder_outputs),encoder_outputs[0].shape
 			self.decoder_outputs_inference, self.encoder_outputs = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, 	mode='inference', reuse=False)	
-			#print "elf.encoder_outputs.shaoe :::: ",len(encoder_outputs),self.encoder_outputs[0].shape
 
 	def trainModel(self, config, train_feed_dict, val_feed_dct, reverse_vocab, do_init=True):
 		
@@ -105,9 +119,10 @@ class Solver:
 			cost = self.cost_list[bucket_num]
 
 			# Gradient descent
-			learning_rate=0.1
+			#learning_rate=0.1
 			batch_size=config['batch_size']
-			optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
+			train_op = self.optimizer_list[bucket_num]
+			#optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
 
 			sess = self.sess
 
@@ -121,7 +136,7 @@ class Solver:
 			#preds = np.array( sess.run(self.pred, feed_dict= feed_dct) )
 			#print preds
 			#with tf.Session() as sess:
-			while step < training_iters:
+			while step <= training_iters:
 				#num_of_batches =  n/batch_size #(n+batch_size-1)/batch_size
 				num_of_batches =  (n+batch_size-1)/batch_size
 				for j in range(num_of_batches):
@@ -135,8 +150,8 @@ class Solver:
 					mask = np.zeros(cur_out.shape, dtype=np.float)
 					mask[x,y]=1
 					feed_dict_cur[masker]=mask
+					sess.run(train_op, feed_dict=feed_dict_cur )
 
-					sess.run(optimizer, feed_dict=feed_dict_cur )
 				if step % display_step == 0:
 					#loss = sess.run(cost, feed_dict= feed_dict_cur)
 					encoder_input_sequences, decoder_input_sequences, decoder_output_sequences = val_feed_dct
