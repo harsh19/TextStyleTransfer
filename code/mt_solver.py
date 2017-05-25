@@ -137,10 +137,10 @@ class Solver:
 					feed_dict_cur[masker]=mask
 
 					sess.run(optimizer, feed_dict=feed_dict_cur )
-					if step % display_step == 0:
-						if j<10:
-							loss = sess.run(cost, feed_dict= feed_dict_cur)
-							print "step ",step," : ",loss
+				if step % display_step == 0:
+					#loss = sess.run(cost, feed_dict= feed_dict_cur)
+					loss = self.costAll(val_feed_dct, sess)
+					print "step ",step," : ",loss
 				if step % sample_step == 0:
   					self.runInference( config, encoder_inputs[:batch_size], decoder_outputs[:batch_size], reverse_vocab, sess )
 				if step%save_step==0:

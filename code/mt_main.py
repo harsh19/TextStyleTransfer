@@ -71,8 +71,8 @@ class PreProcessing:
 	def loadData(self, split, update_vocab=True):
 
 		print "======================================================= loadData: split = ",split
-		inp_src = config.data_dir + split + ".modern"
-		out_src = config.data_dir + split + ".original"
+		inp_src = config.data_dir + split + ".original"#".modern"
+		out_src = config.data_dir + split + ".modern" #".original"
 		inp_data = open(inp_src,"r").readlines()
 		out_data = open(out_src,"r").readlines()
 		
@@ -227,7 +227,7 @@ def main():
 
 		rnn_model = solver.Solver(params,buckets)
 		_ = rnn_model.getModel(params, mode='train',reuse=False, buckets=buckets)
-		rnn_model.trainModel(config=params, train_feed_dict=train_buckets, val_feed_dct=None, reverse_vocab=preprocessing.index_word, do_init=True)
+		rnn_model.trainModel(config=params, train_feed_dict=train_buckets, val_feed_dct=val, reverse_vocab=preprocessing.index_word, do_init=True)
 	
 	else:
 		saved_model_path = sys.argv[2]
