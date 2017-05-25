@@ -139,7 +139,8 @@ class Solver:
 					sess.run(optimizer, feed_dict=feed_dict_cur )
 				if step % display_step == 0:
 					#loss = sess.run(cost, feed_dict= feed_dict_cur)
-					loss = self.costAll(val_feed_dct, sess)
+					encoder_input_sequences, decoder_input_sequences, decoder_output_sequences = val_feed_dct
+					loss = self.getLoss( config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, token_lookup_sequences_placeholder, token_lookup_sequences_decoder_placeholder, token_output_sequences_decoder_placeholder, masker, cost, sess)
 					print "step ",step," : ",loss
 				if step % sample_step == 0:
   					self.runInference( config, encoder_inputs[:batch_size], decoder_outputs[:batch_size], reverse_vocab, sess )
@@ -212,4 +213,37 @@ class Solver:
 		print utils.getScores(decoder_outputs_inference, decoder_ground_truth_outputs)
 
 
+	###################################################################################
+
+	def getLoss(self, config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, enc_inp_placeholder, dec_in_placeholder, dec_out_placeholder, mask_placeholder,  loss_variable, sess): # Probabilities
+		print " getLoss ...... ============================================================"
+		batch_size = config['batch_size']
+		num_batches = ( len(encoder_input_sequences) + batch_size - 1)/ batch_size 
+		loss = []
+		for i in range(num_batches):
+			#print "i= ",i
+			cur_input_sequences = encoder_input_sequences[i*batch_size:(i+1)*batch_size]
+			cur_decoder_input_sequences = decoder_input_sequences[i*batch_size:(i+1)*batch_size]
+			cur_decoder_output_sequences = decoder_output_sequences[i*batch_size:(i+1)*batch_size]
+			lim = len(cur_input_sequences)
+			if len(cur_input_sequences)<batch_size:
+				gap = batch_size - len(cur_input_sequences)
+				for j in range(gap):
+					cur_decoder_output_sequences = np.vstack( (cur_decoder_output_sequences, cur_decoder_output_sequences[0]) )
+					cur_decoder_input_sequences = np.vstack( (cur_decoder_input_sequences, cur_decoder_input_sequences[0]) )
+					cur_input_sequences = np.vstack( (cur_input_sequences, cur_input_sequences[0]) )
+			feed_dct = {enc_inp_placeholder:cur_input_sequences, dec_out_placeholder:cur_decoder_output_sequences, dec_in_placeholder:cur_decoder_input_sequences}
+			mask = np.zeros(cur_decoder_output_sequences.shape, dtype=np.float)
+			x,y = np.nonzero(cur_decoder_output_sequences)
+			mask[x,y]=1
+			feed_dct[mask_placeholder]=mask
+			cur_loss = sess.run(loss_variable, feed_dct)
+			loss.append( cur_loss )
+		loss = np.array(loss)
+		#print "LOSS = ", np.mean(loss)
+		return np.mean(loss)
+
+
 ########################################################################################
+
+

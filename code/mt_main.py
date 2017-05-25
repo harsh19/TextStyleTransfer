@@ -186,6 +186,8 @@ def main():
 	print "mode = ",mode
 
 	train = data['train']
+	val = data['valid']
+	test = data['test']
 	if mode=="debug":
 		lim = 64
 	else:
