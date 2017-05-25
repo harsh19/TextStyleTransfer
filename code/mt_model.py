@@ -158,7 +158,7 @@ class RNNModel:
 			# encoder_outputs: length,N,dims
 			#encoder_last_output = encoder_outputs[-1]   # N,dims
 			#print encoder_last_output.shape
-			encoder_avg_output = tf.reduce_mean( encoder_outputs, axis=0) # N,dims
+			encoder_avg_output = tf.attentionLayer( encoder_outputs, axis=0) # N,dims
 			#print "encoder_avg_output:: ",encoder_avg_output.shape
 			winit = tf.get_variable('winit', [encoder_avg_output.shape[-1], lstm_cell_size] )
 			encoder_avg_output = tf.matmul( encoder_avg_output, winit )
@@ -166,7 +166,7 @@ class RNNModel:
 			return decoder_initial_state
 
 	def runDecoderStep(self, lstm_cell, cur_inputs, prev_cell_output, state, encoder_outputs, reuse=False):
-		context, alpha = self.    (encoder_outputs, prev_cell_output, reuse)
+		context, alpha = self.attentionLayer(encoder_outputs, prev_cell_output, reuse)
 		print "cur_inputs = ",cur_inputs
 		inputs = tf.concat([ cur_inputs, context ], axis=1)
 		print "inputs = ",inputs

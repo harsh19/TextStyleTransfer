@@ -16,10 +16,31 @@ import mt_solver as solver
 class PreProcessing:
 
 	def __init__(self):
-		self.unknown_word = "UNKNOWN"
+		self.unknown_word = "UNK".lower()
 		self.sent_start = "SENTSTART".lower()
 		self.sent_end = "SENTEND".lower()
 		self.pad_word = "PADWORD".lower()
+
+		word_to_idx = {}
+		word_to_idx_ctr = 0 
+		idx_to_word = {}
+		word_to_idx[self.pad_word] = word_to_idx_ctr # 0 is for padword
+		idx_to_word[word_to_idx_ctr]=self.pad_word
+		word_to_idx_ctr+=1
+		word_to_idx[self.sent_start] = word_to_idx_ctr
+		idx_to_word[word_to_idx_ctr]=self.sent_start
+		word_to_idx_ctr+=1
+		word_to_idx[self.sent_end] = word_to_idx_ctr
+		idx_to_word[word_to_idx_ctr]=self.sent_end		
+		word_to_idx_ctr+=1
+		word_to_idx[self.unknown_word] = word_to_idx_ctr
+		idx_to_word[word_to_idx_ctr]=self.unknown_word		
+		word_to_idx_ctr+=1
+
+		#strore needed data structres as class variables
+		self.word_index = word_to_idx
+		self.index_word = idx_to_word
+		self.word_to_idx_ctr = word_to_idx_ctr
 
 	def pad_sequences_my(sequences, maxlen, padding='post', truncating='post'):
 		ret=[]
@@ -34,140 +55,114 @@ class PreProcessing:
 			ret.append(sequence)
 		return np.array(ret)
 
-	def loadPortmanteauData(self, src):
-		data = open(src,"r").readlines()
-		inputs, outputs = [],[]
-		data = [row.strip().split(',') for row in data]
-		inputs = [row[1]+" "+row[2] for row in data] # each input if firstWord SPACE secondWord
-		outputs = [row[0] for row in data]
+	def preprocess(self, text_rows):
+		return [row.strip().split(' ') for row in text_rows]
+
+	def loadData(self, split, update_vocab=True):
+
+		print "======================================================= loadData: split = ",split
+		inp_src = config.data_dir + split + ".modern"
+		out_src = config.data_dir + split + ".original"
+		inp_data = open(inp_src,"r").readlines()
+		out_data = open(out_src,"r").readlines()
 		
-		char_to_idx = {}
-		char_to_idx_ctr = 0 
-		idx_to_char = {}
+		inputs = self.preprocess(inp_data)
+		outputs = self.preprocess(out_data)
+		
+		word_to_idx = self.word_index
+		idx_to_word = self.index_word
+		word_to_idx_ctr = self.word_to_idx_ctr
 
-		char_to_idx[self.pad_word] = char_to_idx_ctr # 0 is for padword
-		idx_to_char[char_to_idx_ctr]=self.pad_word
-		char_to_idx_ctr+=1
-		char_to_idx[self.sent_start] = char_to_idx_ctr
-		idx_to_char[char_to_idx_ctr]=self.sent_start
-		char_to_idx_ctr+=1
-		char_to_idx[self.sent_end] = char_to_idx_ctr
-		idx_to_char[char_to_idx_ctr]=self.sent_end		
-		char_to_idx_ctr+=1
+		if update_vocab:
+			# generate vocab
+			texts = inputs
+			for text in texts:
+				for token in text:
+					if token not in word_to_idx:
+						word_to_idx[token] = word_to_idx_ctr
+						idx_to_word[word_to_idx_ctr]=token
+						word_to_idx_ctr+=1
+			texts = outputs
+			for text in texts:
+				for token in text:
+					if token not in word_to_idx:
+						word_to_idx[token] = word_to_idx_ctr
+						idx_to_word[word_to_idx_ctr]=token
+						word_to_idx_ctr+=1
+		#print "Ignoring MAX_VOCAB_SIZE "
+		#print "Found vocab size = ",word_to_idx_ctr-1 # -1 due to padword
 
-		texts = inputs
-		for text in texts:
-			for ch in text:
-				if ch not in char_to_idx:
-					char_to_idx[ch] = char_to_idx_ctr
-					idx_to_char[char_to_idx_ctr]=ch
-					char_to_idx_ctr+=1
-		texts = outputs
-		for text in texts:
-			for ch in text:
-				if ch not in char_to_idx:
-					char_to_idx[ch] = char_to_idx_ctr
-					idx_to_char[char_to_idx_ctr]=ch
-					char_to_idx_ctr+=1
+		# generate sequences
+		sequences_input = [ [word_to_idx[token] for token in text] for text in inputs ]
+		sequences_input = [ [word_to_idx[self.sent_start]]+text+[word_to_idx[self.sent_end]] for text in sequences_input ]
+		sequences_output = [ [word_to_idx[token] for token in text] for text in outputs ]
+		sequences_output = [ [word_to_idx[self.sent_start]]+text+[word_to_idx[self.sent_end]] for text in sequences_output ]
 
-		print "Ignoring MAX_VOCAB_SIZE "
-		print "Found vocab size = ",char_to_idx_ctr-1
-		sequences_input = [ [char_to_idx[ch] for ch in text] for text in inputs ]
-		sequences_input = [ [char_to_idx[self.sent_start]]+text+[char_to_idx[self.sent_end]] for text in sequences_input ]
-		sequences_output = [ [char_to_idx[ch] for ch in text] for text in outputs ]
-		sequences_output = [ [char_to_idx[self.sent_start]]+text+[char_to_idx[self.sent_end]] for text in sequences_output ]
-
-		# ...
+		# pad sequences
 		#sequences_input, sequences_output = padAsPerBuckets(sequences_input, sequences_output)
 		sequences_input = pad_sequences(sequences_input, maxlen=config.max_input_seq_length, padding='pre', truncating='post')
 		sequences_output = pad_sequences(sequences_output, maxlen=config.max_output_seq_length, padding='post', truncating='post')
 		
-		self.word_index = char_to_idx
-		self.index_word = idx_to_char
-		self.vocab_size = len(char_to_idx)
+		self.word_index = word_to_idx
+		self.index_word = idx_to_word
+		self.vocab_size = len(word_to_idx)
+		self.word_to_idx_ctr = word_to_idx_ctr
 
 		print "Printing few sample sequences... "
 		print sequences_input[0],":", self.fromIdxSeqToVocabSeq(sequences_input[0]), "---", sequences_output[0], ":", self.fromIdxSeqToVocabSeq(sequences_output[0])
 		print sequences_input[113], sequences_output[113]
 
+		print "================================="
 		return sequences_input, sequences_output
 
 	def fromIdxSeqToVocabSeq(self, seq):
 		return [self.index_word[x] for x in seq]
 
-	def prepareMTData(self, inputs, outputs, seed=123):
+	def prepareMTData(self, sequences, seed=123, do_shuffle=False):
+		inputs, outputs = sequences
 
 		decoder_inputs = np.array( [ sequence[:-1] for sequence in outputs ] )
 		decoder_outputs = np.array( [ np.expand_dims(sequence[1:],-1) for sequence in outputs ] )
 		encoder_inputs = np.array(inputs)
 
-		indices = np.arange(encoder_inputs.shape[0])
+		if do_shuffle:
+			#shuffling
+			indices = np.arange(encoder_inputs.shape[0])
+			np.random.seed(seed)
+			np.random.shuffle(indices)
+
+		return encoder_inputs, decoder_inputs, decoder_outputs
 		
-		#shuffling
-		np.random.seed(seed)
-		np.random.shuffle(indices)
-		
-		#spplit indices
-		nb_validation_samples = int(config.VALIDATION_SPLIT * encoder_inputs.shape[0])
-		print "nb_validation_samples = ",nb_validation_samples
-		nb_test_samples = int(config.TEST_SPLIT * encoder_inputs.shape[0])
-		test_indices = indices[-nb_test_samples:]
-		val_indices = indices[-nb_test_samples-nb_validation_samples:-nb_test_samples]
-		train_indices = indices[0:-nb_test_samples-nb_validation_samples]
-		print "nb_test_samples=",nb_test_samples
-
-		#splits
-		data = [encoder_inputs, decoder_inputs, decoder_outputs]
-		train = [ dat[train_indices] for dat in data ]
-		val = [ dat[val_indices] for dat in data ]
-		test = [ dat[test_indices] for dat in data ]
-
-		print "========================="
-		print "traindata  lengths"
-		for dat in val:
-			print len(dat)
-		print "========================="
-
-		return train,val,test
-		
-
-
-def getPretrainedEmbeddings(src):
-	ret={}
-	vals = open(src,"r").readlines()
-	vals = [val.strip().split('\t') for val in vals]
-	for val in vals:
-		#print val[0]
-		ret[val[0]] = [float(v) for v in val[1:]]
-		assert len( ret[val[0]] ) == 50
-	ret['sentstart'] = ret['SENT_START']
-	ret['sentend'] = ret['SENT_END']
-	return ret
-
 
 def main():
-	preprocessing = PreProcessing()
-
-	inputs,outputs = preprocessing.loadPortmanteauData("./data/finalports.csv")		
-	train,val,test = preprocessing.prepareMTData(inputs,outputs)
-	#return
 	
-	# get model
+	# params
 	params = {}
 	params['embeddings_dim'] =  config.embeddings_dim
 	params['lstm_cell_size'] = config.lstm_cell_size
-	params['vocab_size'] =  preprocessing.vocab_size
-	print "params['vocab_size'] --------> ",params['vocab_size']
 	params['max_input_seq_length'] = config.max_input_seq_length
 	params['max_output_seq_length'] = config.max_output_seq_length-1 #inputs are all but last element, outputs are al but first element
-	params['batch_size'] = 20
-	params['pretrained_embeddings']=True
-	
-	#return
+	params['batch_size'] = config.batch_size
+	#params['pretrained_embeddings']=True
 	print params
-	buckets = {  0:{'max_input_seq_length':40, 'max_output_seq_length':19} }
-	#,1:{'max_input_seq_length':40,'max_output_seq_length':19}, 2:{'max_input_seq_length':40, 'max_output_seq_length':19} }
-	print buckets
+	buckets = {  0:{'max_input_seq_length':params['max_input_seq_length'], 'max_output_seq_length':params['max_output_seq_length']} }
+	print "buckets = ",buckets
+
+	# preprocessing
+	print "------------------------------------------------------------------------"
+	preprocessing = PreProcessing()
+	splits =["train","valid","test"]
+	data_seq = {split:preprocessing.loadData(split=split) for split in splits}			
+	data = { split:preprocessing.prepareMTData(cur_data) for split,cur_data in data_seq.items()  }
+	for split,split_data in data.items():
+		print "Split: ",split
+		inp,dinp,dout = split_data
+		print inp[0]
+		print dinp[0]
+		print dout[0]
+		print ""
+	print "------------------------------------------------------------------------"
+	return
 	
 	# train
 	lim=params['batch_size'] * ( len(train[0])/params['batch_size'] )
@@ -179,10 +174,10 @@ def main():
 		train = train_encoder_inputs, train_decoder_inputs, train_decoder_outputs
 	if params['pretrained_embeddings']:
 		pretrained_embeddings = getPretrainedEmbeddings(src="pretrained_embeddings.txt")
-		char_to_idx = preprocessing.word_index
+		word_to_idx = preprocessing.word_index
 		encoder_embedding_matrix = np.random.rand( params['vocab_size'], params['embeddings_dim'] )
 		decoder_embedding_matrix = np.random.rand( params['vocab_size'], params['embeddings_dim'] )
-		for char,idx in char_to_idx.items():
+		for char,idx in word_to_idx.items():
 			if char in pretrained_embeddings:
 				encoder_embedding_matrix[idx]=pretrained_embeddings[char]
 				decoder_embedding_matrix[idx]=pretrained_embeddings[char]
