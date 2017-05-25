@@ -17,9 +17,11 @@ import utilities
 class RNNModel:
 
 
-	def __init__(self, buckets_dict, mode='training'):
+	def __init__(self, buckets_dict, mode='training',params={}):
 		print "========== INIT ============= "
-		self.use_reverse_encoder = False
+		self.use_reverse_encoder=False
+		if 'use_reverse_encoder' in params:
+			self.use_reverse_encoder = params['use_reverse_encoder']
 		if mode=='training':
 			self.token_lookup_sequences_decoder_placeholder_list = []
 			self.masker_list = []
@@ -29,7 +31,6 @@ class RNNModel:
 			for bucket_num, bucket in buckets_dict.items():
 				max_sentence_length = bucket['max_input_seq_length']
 				self.token_lookup_sequences_placeholder_list.append( tf.placeholder("int32", [None, max_sentence_length], name="token_lookup_sequences"+str(bucket_num))  )# token_lookup_sequences
-				
 				max_sentence_length = bucket['max_output_seq_length']
 				self.masker_list.append( tf.placeholder("float32", [None, max_sentence_length], name="masker"+str(bucket_num)) )
 				self.token_output_sequences_decoder_placeholder_list.append( tf.placeholder("int32", [None, max_sentence_length], name="token_output_sequences_decoder_placeholder"+str(bucket_num)) )
@@ -54,7 +55,7 @@ class RNNModel:
 		#unrolled lstm 	
 		outputs = [] # h values at each time step
 		state = initial_state
-		print "num_steps = ",num_steps
+		#print "num_steps = ",num_steps
 		with tf.variable_scope("RNN"):
 			for time_step in range(num_steps):
 				if time_step > 0: tf.get_variable_scope().reuse_variables()
@@ -70,7 +71,7 @@ class RNNModel:
 				initial_state = self._getEncoderInitialState(cell, batch_size)
 				rev_outputs = [] # h values at each time step
 				state = initial_state
-				print "num_steps = ",num_steps
+				#print "num_steps = ",num_steps
 				for time_step in range(num_steps-1,-1,-1):
 					if time_step < (num_steps-1): tf.get_variable_scope().reuse_variables()
 					(cell_output, state) = cell(inputs[:, time_step, :], state)
@@ -79,10 +80,10 @@ class RNNModel:
 					rev_outputs = [cell_output] + rev_outputs # reverse encoder
 			rev_outputs = tf.stack(rev_outputs) 
 			#rev_outputs = tf.reverse(rev_outputs, axis=0)
-			print outputs.shape
+			#print outputs.shape
 			#outputs = outputs + rev_outputs
 			outputs = tf.concat([outputs, rev_outputs], axis=2)
-			print outputs.shape
+			#print outputs.shape
 
 		return outputs
 
@@ -125,7 +126,7 @@ class RNNModel:
 		with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
 			shap = encoder_vals.get_shape().as_list()
 			encoder_vals_size = shap[2]
-			print "encoder_vals_size = ",encoder_vals_size
+			#print "encoder_vals_size = ",encoder_vals_size
 			cell_size = h_prev.shape[1]
 			encoder_sequence_length = shap[1]
 
@@ -142,15 +143,10 @@ class RNNModel:
 			#b = tf.get_variable('b', [encoder_vals_size] )
 			#print "h_prev.shape ",h_prev.get_shape()
 
-			print "h_prev = ",h_prev
 			h_att = tf.expand_dims(tf.matmul(h_prev, watt), 1) #+ b	# (N,1,cell_size)
-			print "h_att = ",h_att
 			out_att = tf.reduce_sum( tf.multiply( h_att, encoder_vals ), axis=2 ) # (N, encoder_sequence_length)
-			print "out_att = ",out_att
 			alpha = tf.nn.softmax(out_att)  # (N, encoder_sequence_length)
-			print "alpha = ",alpha
 			context = tf.reduce_sum(encoder_vals * tf.expand_dims(alpha, 2), 1, name='context')   #(N, lstm_cell_size)
-			print "cpontext at attention = ",context
 			return context, alpha
 
 	def getInitialState(self, encoder_outputs, lstm_cell_size, reuse=False):
@@ -158,7 +154,7 @@ class RNNModel:
 			# encoder_outputs: length,N,dims
 			#encoder_last_output = encoder_outputs[-1]   # N,dims
 			#print encoder_last_output.shape
-			encoder_avg_output = tf.attentionLayer( encoder_outputs, axis=0) # N,dims
+			encoder_avg_output = tf.reduce_mean( encoder_outputs, axis=0) # N,dims
 			#print "encoder_avg_output:: ",encoder_avg_output.shape
 			winit = tf.get_variable('winit', [encoder_avg_output.shape[-1], lstm_cell_size] )
 			encoder_avg_output = tf.matmul( encoder_avg_output, winit )
@@ -167,10 +163,10 @@ class RNNModel:
 
 	def runDecoderStep(self, lstm_cell, cur_inputs, prev_cell_output, state, encoder_outputs, reuse=False):
 		context, alpha = self.attentionLayer(encoder_outputs, prev_cell_output, reuse)
-		print "cur_inputs = ",cur_inputs
+		#print "cur_inputs = ",cur_inputs
 		inputs = tf.concat([ cur_inputs, context ], axis=1)
-		print "inputs = ",inputs
-		print "conterxt = ",context
+		#print "inputs = ",inputs
+		#print "conterxt = ",context
 		return lstm_cell(inputs, state=state), context, alpha
 
 
@@ -282,7 +278,7 @@ class RNNModel:
 					if time_step > 0: tf.get_variable_scope().reuse_variables()
 					inputs_current_time_step = inputs[:, time_step, :]
 					#print "inputs_current_time_step.shape: ",inputs_current_time_step.shape
-					print "state = ",state
+					#print "state = ",state
 					(cell_output, state), context, alpha = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs, prev_cell_output=cell_output, reuse=(time_step!=0), state=state)
 					#print(cell_output.shape)
 					outputs.append(cell_output)

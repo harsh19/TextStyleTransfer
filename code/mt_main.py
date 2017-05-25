@@ -12,6 +12,14 @@ import pickle
 import utilities as datasets
 import utilities
 import mt_solver as solver
+import sys
+
+'''
+# usage:
+python main.py train <num_of_iters> <model_name>
+OR
+python main.py inference <saved_model_path>
+'''
 
 class PreProcessing:
 
@@ -122,7 +130,8 @@ class PreProcessing:
 		inputs, outputs = sequences
 
 		decoder_inputs = np.array( [ sequence[:-1] for sequence in outputs ] )
-		decoder_outputs = np.array( [ np.expand_dims(sequence[1:],-1) for sequence in outputs ] )
+		#decoder_outputs = np.array( [ np.expand_dims(sequence[1:],-1) for sequence in outputs ] )
+		decoder_outputs = np.array( [ sequence[1:] for sequence in outputs ] )
 		encoder_inputs = np.array(inputs)
 
 		if do_shuffle:
@@ -143,8 +152,8 @@ def main():
 	params['max_input_seq_length'] = config.max_input_seq_length
 	params['max_output_seq_length'] = config.max_output_seq_length-1 #inputs are all but last element, outputs are al but first element
 	params['batch_size'] = config.batch_size
-	#params['pretrained_embeddings']=True
-	print params
+	params['pretrained_embeddings']=False
+	print "params = ", params
 	buckets = {  0:{'max_input_seq_length':params['max_input_seq_length'], 'max_output_seq_length':params['max_output_seq_length']} }
 	print "buckets = ",buckets
 
@@ -157,14 +166,21 @@ def main():
 	for split,split_data in data.items():
 		print "Split: ",split
 		inp,dinp,dout = split_data
-		print inp[0]
+		print inp.shape, dinp.shape, dout.shape
+		'''print inp[0]
 		print dinp[0]
 		print dout[0]
 		print ""
+		'''
 	print "------------------------------------------------------------------------"
-	return
+	print "------------------------------------------------------------------------"
+	print ""
+	#return
+
+	params['vocab_size'] = preprocessing.vocab_size
 	
 	# train
+	train = data['train']
 	lim=params['batch_size'] * ( len(train[0])/params['batch_size'] )
 	if lim!=-1:
 		train_encoder_inputs, train_decoder_inputs, train_decoder_outputs = train
@@ -186,24 +202,32 @@ def main():
 		params['encoder_embeddings_matrix'] = encoder_embedding_matrix 
 		params['decoder_embeddings_matrix'] = decoder_embedding_matrix 
 
-	mode=''
+	mode=sys.argv[1]
+	print "mode = ",mode
 	if mode=='train':
+		training_iters = int(sys.argv[2])
+		model_name = sys.argv[3]
+		params['training_iters'] = training_iters
+		params['use_reverse_encoder'] = config.use_reverse_encoder
+		params['model_name'] = model_name
 		train_buckets = {}
 		for bucket,_ in enumerate(buckets):
 			train_buckets[bucket] = train
 
-		rnn_model = solver.Solver(buckets)
+		rnn_model = solver.Solver(params,buckets)
 		_ = rnn_model.getModel(params, mode='train',reuse=False, buckets=buckets)
 		rnn_model.trainModel(config=params, train_feed_dict=train_buckets, val_feed_dct=None, reverse_vocab=preprocessing.index_word, do_init=True)
 	
 	else:
+		saved_model_path = sys.argv[2]
 		val_encoder_inputs, val_decoder_inputs, val_decoder_outputs = val
 		print "val_encoder_inputs = ",val_encoder_inputs
 
 		if len(val_decoder_outputs.shape)==3:
 			val_decoder_outputs=np.reshape(val_decoder_outputs, (val_decoder_outputs.shape[0], val_decoder_outputs.shape[1]))
 
-		rnn_model = solver.Solver(buckets=None, mode='inference')
+		params['saved_model_path'] = saved_model_path
+		rnn_model = solver.Solver(params, buckets=None, mode='inference')
 		_ = rnn_model.getModel(params, mode='inference', reuse=False, buckets=None)
 		print "----Running inference-----"
 		#rnn_model.runInference(params, val_encoder_inputs[:params['batch_size']], val_decoder_outputs[:params['batch_size']], preprocessing.index_word)

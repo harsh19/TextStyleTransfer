@@ -14,14 +14,15 @@ from utilities import OutputSentence, TopN
 import utilities
 import utilities as utils
 import mt_model as model
+import configuration
 	
 class Solver:
 
-	def __init__(self, buckets=None, mode='training'):
+	def __init__(self, params, buckets=None, mode='training'):
 		if mode=='training':
-			self.model_obj = model.RNNModel(buckets, mode=mode)
+			self.model_obj = model.RNNModel(buckets, mode=mode, params=params)
 		else:
-			self.model_obj = model.RNNModel(buckets_dict=None, mode=mode)
+			self.model_obj = model.RNNModel(buckets_dict=None, mode=mode, params=params)
 
 	def getModel(self, config, buckets, mode='train', reuse=False ):
 
@@ -41,8 +42,6 @@ class Solver:
 			for bucket_num, bucket_dct in self.buckets.items():
 				config['max_input_seq_length'] = bucket_dct['max_input_seq_length']
 				config['max_output_seq_length'] = bucket_dct['max_output_seq_length']
-				print ""
-				print ""
 				print "------------------------------------------------------------------------------------------------------------------------------------------- "
 				encoder_outputs = self.model_obj.getEncoderModel(config, mode='training', reuse= reuse, bucket_num=bucket_num )
 				pred = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=True, mode='training', reuse=reuse, bucket_num=bucket_num)
@@ -81,6 +80,7 @@ class Solver:
 		for v in tf.trainable_variables():
 			print(v)
 		print("==================")
+		model_name = config['model_name']
 
 
 		for bucket_num,bucket in enumerate(self.buckets):
@@ -111,10 +111,10 @@ class Solver:
 
 			sess = self.sess
 
-			training_iters=50
-			display_step=2
-			sample_step=5
-			save_step = 39
+			training_iters=config['training_iters']
+			display_step=configuration.display_step
+			sample_step=configuration.sample_step
+			save_step = configuration.save_step
 			n = feed_dct[token_lookup_sequences_placeholder].shape[0]
 			# Launch the graph
 			step = 1
@@ -139,21 +139,12 @@ class Solver:
 					sess.run(optimizer, feed_dict=feed_dict_cur )
 					if step % display_step == 0:
 						if j<10:
-						#print " j = ",j
 							loss = sess.run(cost, feed_dict= feed_dict_cur)
 							print "step ",step," : ",loss
-					if step % sample_step == 0:
-						#continue
-						#print "@@@@@@@@@@@@@@@@@@@@@@@@@@ j= ",j
-						if j==0:
-		  					self.runInference( config, encoder_inputs[:batch_size], decoder_outputs[:batch_size], reverse_vocab, sess )
-							'''pred_cur = np.array( sess.run(pred, feed_dict= feed_dict_cur) )
-							print pred_cur.shape
-							print pred_cur[0].shape
-							print np.sum(pred_cur[0],axis=1)
-							'''
+				if step % sample_step == 0:
+  					self.runInference( config, encoder_inputs[:batch_size], decoder_outputs[:batch_size], reverse_vocab, sess )
 				if step%save_step==0:
-					save_path = saver.save(sess, "./tmp/model"+str(step)+".ckpt")
+					save_path = saver.save(sess, "./tmp/" + model_name + str(step) + ".ckpt")
 	  				print "Model saved in file: ",save_path
 				step += 1
 
@@ -166,7 +157,8 @@ class Solver:
 		if sess==None:
 	  		sess = tf.Session()
 	  		saver = tf.train.Saver()
-	  		saver.restore(sess, "./tmp/model39.ckpt")
+			saved_model_path = config['saved_model_path']
+	  		saver.restore(sess,  saved_model_path ) #"./tmp/model39.ckpt")
 		typ = "greedy" #config['inference_type']
 		model_obj = self.model_obj
 		feed_dct={model_obj.token_lookup_sequences_placeholder_inference:encoder_inputs}
