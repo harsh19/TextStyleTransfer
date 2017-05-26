@@ -66,13 +66,13 @@ class PreProcessing:
 		return np.array(ret)
 
 	def preprocess(self, text_rows):
-		return [row.strip().split(' ') for row in text_rows]
+		return [row.strip().lower().split(' ') for row in text_rows]
 
 	def loadData(self, split, update_vocab=True):
 
 		print "======================================================= loadData: split = ",split
-		inp_src = config.data_dir + split + ".original"#".modern"
-		out_src = config.data_dir + split + ".modern" #".original"
+		inp_src = config.data_dir + split + ".original" + ".nltktok" #".modern"
+		out_src = config.data_dir + split + ".modern" + ".nltktok" #".original"
 		inp_data = open(inp_src,"r").readlines()
 		out_data = open(out_src,"r").readlines()
 		

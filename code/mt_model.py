@@ -47,7 +47,7 @@ class RNNModel:
 		inputs = x
 
 		#define lstm cell
-		lstm_cell_size = 60
+		lstm_cell_size = lstm_cell_size
 		lstm_cell = rnn.BasicLSTMCell(lstm_cell_size, forget_bias=1.0, state_is_tuple=True, reuse=reuse)
 		cell = lstm_cell
 		initial_state = self._getEncoderInitialState(cell, batch_size)

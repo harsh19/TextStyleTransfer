@@ -57,6 +57,7 @@ class Solver:
 
 				self.encoder_outputs_list.append(encoder_outputs)
 				self.cost_list.append( self.model_obj.cost )
+				cost = self.model_obj.cost 
 				if self.optimizer_typ=="sgd":
 					optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
 					train_op = optimizer
@@ -187,6 +188,7 @@ class Solver:
 				for i,row in enumerate(decoder_outputs_inference):
 					ret=""
 					for val in row:
+					        if val==2: break # sentend. TO DO: load this value from config
 						ret+=( " " + reverse_vocab[val] )
 					#print "decoder_ground_truth_outputs[i] = ",decoder_ground_truth_outputs[i]
 					print "GT: ", [ reverse_vocab[j] for j in decoder_ground_truth_outputs[i]]
