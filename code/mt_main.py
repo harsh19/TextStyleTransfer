@@ -155,6 +155,7 @@ def main():
 	params['max_output_seq_length'] = config.max_output_seq_length-1 #inputs are all but last element, outputs are al but first element
 	params['batch_size'] = config.batch_size
 	params['pretrained_embeddings']=False
+	params['share_encoder_decoder_embeddings'] = config.share_encoder_decoder_embeddings
 	print "params = ", params
 	buckets = {  0:{'max_input_seq_length':params['max_input_seq_length'], 'max_output_seq_length':params['max_output_seq_length']} }
 	print "buckets = ",buckets
