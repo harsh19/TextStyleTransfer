@@ -190,7 +190,7 @@ class RNNModel:
 		return pred
 
 	def initEmbeddings(self, emb_scope, token_vocab_size, embeddings_dim, reuse=False, pretrained_embeddings=None):
-		with tf.variable_scope(emb_scope):
+		with tf.variable_scope(emb_scope, reuse=reuse):
 			if pretrained_embeddings!=None:
 				token_emb_mat = tf.get_variable("emb_mat", shape=[token_vocab_size, embeddings_dim], dtype='float', initializer=tf.constant_initializer(np.array(pretrained_embeddings)) )
 				token_emb_mat = tf.concat( [tf.zeros([1, embeddings_dim]), tf.slice(token_emb_mat, [1,0],[-1,-1]) ], axis=0 )	
@@ -331,17 +331,19 @@ class RNNModel:
 			token_output_sequences_placeholder = self.token_output_sequences_decoder_placeholder_list[bucket_num]
 
 		#embeddings
-		share_embeddings=False
+		share_embeddings=config['share_encoder_decoder_embeddings']
 		emb_scope = 'emb_decoder'
-		if share_embeddings:
-			emb_scope='emb'
 		if reuse:
 			token_emb_mat = self.decoder_token_emb_mat
 		else:
 			pretrained_embeddings=None
-			if config['pretrained_embeddings']:
-				pretrained_embeddings = config['decoder_embeddings_matrix']
-			self.decoder_token_emb_mat = token_emb_mat = self.initEmbeddings(emb_scope, token_vocab_size, embeddings_dim, reuse=reuse, pretrained_embeddings=pretrained_embeddings)
+			if share_embeddings:
+				# ignoreing pretrained embeddings if shared embeddings
+				self.decoder_token_emb_mat = token_emb_mat = self.encoder_token_emb_mat
+			else:
+				if config['pretrained_embeddings']:
+					pretrained_embeddings = config['decoder_embeddings_matrix']
+				self.decoder_token_emb_mat = token_emb_mat = self.initEmbeddings(emb_scope, token_vocab_size, embeddings_dim, reuse=reuse, pretrained_embeddings=pretrained_embeddings)
 
 		with tf.variable_scope('decoder',reuse=reuse):
 				

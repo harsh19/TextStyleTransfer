@@ -10,3 +10,4 @@ use_reverse_encoder=True
 display_step=1
 sample_step=2
 save_step = 4
+share_encoder_decoder_embeddings=True
