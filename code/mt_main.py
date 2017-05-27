@@ -92,6 +92,7 @@ def main():
 		train_decoder_inputs = train_decoder_inputs[:lim]
 		train_decoder_outputs = train_decoder_outputs[:lim]
 		train = train_encoder_inputs, train_decoder_inputs, train_decoder_outputs
+		
 	if params['pretrained_embeddings']:
 		pretrained_embeddings = pickle.load(open(params['pretrained_embeddings_path'],"r"))
 		word_to_idx = preprocessing.word_to_idx

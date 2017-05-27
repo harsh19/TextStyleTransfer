@@ -10,7 +10,7 @@ max_vocab_size = 12000
 
 use_reverse_encoder=True
 share_encoder_decoder_embeddings=True
-use_pointer=False
+use_pointer=True
 use_pretrained_embeddings = True
 pretrained_embeddings_path = "../data/noConstraints_128.p"
 pretrained_embeddings_are_trainable = True  # Not supported yet. 
