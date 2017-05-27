@@ -21,6 +21,8 @@ OR
 python main.py inference <saved_model_path>
 OR
 python main.py debug
+OR 
+python main.py preprocessing
 '''
 
 class PreProcessing:
@@ -236,35 +238,42 @@ def main():
 	params['pretrained_embeddings_are_trainable'] = config.pretrained_embeddings_are_trainable
 	params['max_vocab_size'] = config.max_vocab_size
 	params['do_vocab_pruning'] = config.do_vocab_pruning
+	params['use_reverse_encoder'] = config.use_reverse_encoder
 
 	print "params = ", params
 	buckets = {  0:{'max_input_seq_length':params['max_input_seq_length'], 'max_output_seq_length':params['max_output_seq_length']} }
 	print "buckets = ",buckets
-
-	# preprocessing
-	print "------------------------------------------------------------------------"
-	preprocessing = PreProcessing()
-	splits =["train","valid","test"]
-	#for split in splits: preprocessing.loadVocab(split)
-	preprocessing.loadVocab('train')
-	if params['do_vocab_pruning']:
-		preprocessing.pruneVocab(max_vocab_size=params['max_vocab_size'])
-	data_seq = {split:preprocessing.loadData(split=split) for split in splits}			
-	data = { split:preprocessing.prepareMTData(cur_data) for split,cur_data in data_seq.items()  }
-	for split,split_data in data.items():
-		print "Split: ",split
-		inp,dinp,dout = split_data
-		print inp.shape, dinp.shape, dout.shape
-	print "------------------------------------------------------------------------"
-	print "------------------------------------------------------------------------"
-	print ""
-	#return
-
-	params['vocab_size'] = preprocessing.vocab_size
 	
 	# train
 	mode=sys.argv[1]
 	print "mode = ",mode
+
+	if mode=="preprocessing":
+		# preprocessing
+		print "------------------------------------------------------------------------"
+		preprocessing = PreProcessing()
+		splits =["train","valid","test"]
+		#for split in splits: preprocessing.loadVocab(split)
+		preprocessing.loadVocab('train')
+		if params['do_vocab_pruning']:
+			preprocessing.pruneVocab(max_vocab_size=params['max_vocab_size'])
+		data_seq = {split:preprocessing.loadData(split=split) for split in splits}			
+		data = { split:preprocessing.prepareMTData(cur_data) for split,cur_data in data_seq.items()  }
+		for split,split_data in data.items():
+			print "Split: ",split
+			inp,dinp,dout = split_data
+			print inp.shape, dinp.shape, dout.shape
+		print "------------------------------------------------------------------------"
+		print "------------------------------------------------------------------------"
+		print ""
+		pickle.dump(data,open("./tmp/data.obj","w"))
+		pickle.dump(preprocessing, open("./tmp/preprocessing.obj","w") )
+		return
+	else:
+		data = pickle.load(open("./tmp/data.obj","r") )
+		preprocessing = pickle.load(open("./tmp/preprocessing.obj","r") )
+
+	params['vocab_size'] = preprocessing.vocab_size
 
 	train = data['train']
 	val = data['valid']
@@ -306,7 +315,6 @@ def main():
 			training_iters = 5
 			model_name = "test"
 		params['training_iters'] = training_iters
-		params['use_reverse_encoder'] = config.use_reverse_encoder
 		params['model_name'] = model_name
 		train_buckets = {}
 		for bucket,_ in enumerate(buckets):
@@ -328,8 +336,7 @@ def main():
 		rnn_model = solver.Solver(params, buckets=None, mode='inference')
 		_ = rnn_model.getModel(params, mode='inference', reuse=False, buckets=None)
 		print "----Running inference-----"
-		#rnn_model.runInference(params, val_encoder_inputs[:params['batch_size']], val_decoder_outputs[:params['batch_size']], preprocessing.idx_to_word)
-		rnn_model.solveAll(params, val_encoder_inputs, val_decoder_outputs, preprocessing.idx_to_word)
+		decoder_outputs_inference, decoder_ground_truth_outputs = rnn_model.solveAll(params, val_encoder_inputs, val_decoder_outputs, preprocessing.idx_to_word)
 
 if __name__ == "__main__":
 	main()

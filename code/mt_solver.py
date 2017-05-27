@@ -234,7 +234,8 @@ class Solver:
 		print len(encoder_inputs)
 		print len(decoder_outputs_inference)
 		print decoder_outputs_inference[0], decoder_ground_truth_outputs[0]
-		print utils.getScores(decoder_outputs_inference, decoder_ground_truth_outputs)
+		return decoder_outputs_inference, decoder_ground_truth_outputs
+		#print utils.getScores(decoder_outputs_inference, decoder_ground_truth_outputs)
 
 
 	###################################################################################

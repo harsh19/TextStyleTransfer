@@ -6,7 +6,7 @@ embeddings_dim = 128
 #dropout_val = 0.2
 lstm_cell_size=128
 do_vocab_pruning = True
-max_vocab_size = 15000
+max_vocab_size = 12000
 
 use_reverse_encoder=True
 share_encoder_decoder_embeddings=True

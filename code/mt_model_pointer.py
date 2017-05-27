@@ -107,7 +107,7 @@ class RNNModel:
 			pretrained_embeddings=None
 			if config['pretrained_embeddings']:
 				pretrained_embeddings = config['encoder_embeddings_matrix']
-			self.encoder_token_emb_mat = token_emb_mat = self.initEmbeddings('emb_encoder', token_vocab_size, embeddings_dim, reuse=reuse)
+			self.encoder_token_emb_mat = token_emb_mat = self.initEmbeddings('emb_encoder', token_vocab_size, embeddings_dim, reuse=reuse, pretrained_embeddings=pretrained_embeddings)
 		inp = tf.nn.embedding_lookup(token_emb_mat, token_lookup_sequences_placeholder) 
 			
 		# run lstm 
