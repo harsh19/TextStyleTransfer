@@ -30,6 +30,7 @@ class PreProcessing:
 		self.sent_start = "SENTSTART".lower()
 		self.sent_end = "SENTEND".lower()
 		self.pad_word = "PADWORD".lower()
+		self.special_tokens = [self.sent_start, self.sent_end, self.pad_word, self.unknown_word]
 
 		self.word_counters, self.word_to_idx, self.word_to_idx_ctr, self.idx_to_word = self.initVocabItems()
 
@@ -125,16 +126,24 @@ class PreProcessing:
 		word_to_idx_ctr = self.word_to_idx_ctr
 		word_counters = self.word_counters
 
-		self.word_counters, self.word_to_idx, self.word_to_idx_ctr, self.idx_to_word = self.initVocabItems()
+		tmp_word_counters, tmp_word_to_idx, tmp_word_to_idx_ctr, tmp_idx_to_word = self.initVocabItems()
+		print "** ",tmp_idx_to_word[1]
 
 		print "vocab size before pruning = ", len(word_to_idx)
 		top_items = sorted( word_counters.items(), key=lambda x:-x[1] )[:max_vocab_size]
 		for token_count in top_items:
 			token=token_count[0]
-			self.word_to_idx[token] = self.word_to_idx_ctr
-			self.idx_to_word[self.word_to_idx_ctr] = token
-			self.word_to_idx_ctr+=1
-		self.vocab_size = len(self.word_to_idx)
+			if token in self.special_tokens:
+				continue
+			tmp_word_to_idx[token] = tmp_word_to_idx_ctr
+			tmp_idx_to_word[tmp_word_to_idx_ctr] = token
+			tmp_word_to_idx_ctr+=1
+		print "** ",tmp_idx_to_word[9947]
+
+		self.word_to_idx = tmp_word_to_idx
+		self.idx_to_word = tmp_idx_to_word
+		self.vocab_size = len(tmp_word_to_idx)
+		self.word_to_idx_ctr = tmp_word_to_idx_ctr
 		print "vocab size after pruning = ", self.vocab_size
 
 
