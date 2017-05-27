@@ -107,7 +107,7 @@ class RNNModel:
 			pretrained_embeddings=None
 			if config['pretrained_embeddings']:
 				pretrained_embeddings = config['encoder_embeddings_matrix']
-			self.encoder_token_emb_mat = token_emb_mat = self.initEmbeddings('emb_encoder', token_vocab_size, embeddings_dim, reuse=reuse)
+			self.encoder_token_emb_mat = token_emb_mat = self.initEmbeddings('emb_encoder', token_vocab_size, embeddings_dim, reuse=reuse, pretrained_embeddings=pretrained_embeddings)
 		inp = tf.nn.embedding_lookup(token_emb_mat, token_lookup_sequences_placeholder) 
 			
 		# run lstm 
@@ -193,6 +193,7 @@ class RNNModel:
 			if pretrained_embeddings!=None:
 				token_emb_mat = tf.get_variable("emb_mat", shape=[token_vocab_size, embeddings_dim], dtype='float', initializer=tf.constant_initializer(np.array(pretrained_embeddings)) )
 				token_emb_mat = tf.concat( [tf.zeros([1, embeddings_dim]), tf.slice(token_emb_mat, [1,0],[-1,-1]) ], axis=0 )	
+				print "USED  PRETRAINED MEBDDEING"	
 			else:
 				token_emb_mat = tf.get_variable("emb_mat", shape=[token_vocab_size, embeddings_dim], dtype='float')
 				# 0-mask

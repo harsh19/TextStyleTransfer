@@ -293,6 +293,7 @@ def main():
 				if not_found_count<10:
 					print "No pretrained embedding for (only first 10 such cases will be printed. other prints are suppressed) ",token
 				not_found_count+=1
+		print "not found count = ", not_found_count 
 		params['encoder_embeddings_matrix'] = encoder_embedding_matrix 
 		params['decoder_embeddings_matrix'] = decoder_embedding_matrix 
 
