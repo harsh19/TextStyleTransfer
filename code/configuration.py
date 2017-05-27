@@ -1,14 +1,21 @@
+data_dir = "../data/"
 
 max_input_seq_length = 25
 max_output_seq_length = 25
 embeddings_dim = 128
-batch_size = 32
 #dropout_val = 0.2
 lstm_cell_size=128
-data_dir = "../data/"
+do_vocab_pruning = True
+max_vocab_size = 12000
+
 use_reverse_encoder=True
+share_encoder_decoder_embeddings=True
+use_pointer=True
+use_pretrained_embeddings = False
+pretrained_embeddings_path = "../data/noConstraints_128.p"
+pretrained_embeddings_are_trainable = True
+
 display_step=1
 sample_step=2
 save_step = 4
-share_encoder_decoder_embeddings=True
-use_pointer=True
+batch_size = 32

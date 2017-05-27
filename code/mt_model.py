@@ -19,9 +19,8 @@ class RNNModel:
 
 	def __init__(self, buckets_dict, mode='training',params={}):
 		print "========== INIT ============= "
-		self.use_reverse_encoder=False
-		if 'use_reverse_encoder' in params:
-			self.use_reverse_encoder = params['use_reverse_encoder']
+		self.use_pointer = params['use_pointer']
+		self.use_reverse_encoder = params['use_reverse_encoder']
 		if mode=='training':
 			self.token_lookup_sequences_decoder_placeholder_list = []
 			self.masker_list = []

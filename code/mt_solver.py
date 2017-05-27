@@ -13,8 +13,14 @@ from tensorflow.contrib import rnn
 from utilities import OutputSentence, TopN
 import utilities
 import utilities as utils
-import mt_model as model
 import configuration
+
+# pointer
+if configuration.use_pointer:
+	import mt_model_pointer as model
+else:
+	import mt_model as model
+
 	
 class Solver:
 
@@ -72,6 +78,7 @@ class Solver:
 			self.encoder_outputs = encoder_outputs = self.model_obj.getEncoderModel(config, mode='inference', reuse=True )
 			decoder_outputs_inference, encoder_outputs = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, mode='inference', reuse=True)	
 			self.decoder_outputs_inference = decoder_outputs_inference
+			
 			self.token_lookup_sequences_placeholder_list  = self.model_obj.token_lookup_sequences_placeholder_list
 			self.token_lookup_sequences_decoder_placeholder_list = self.model_obj.token_lookup_sequences_decoder_placeholder_list
 			self.token_output_sequences_decoder_placeholder_list = self.model_obj.token_output_sequences_decoder_placeholder_list
