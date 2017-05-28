@@ -73,7 +73,8 @@ class RNNModel:
 					(cell_output, state) = cell(inputs[:, time_step, :], state)
 					rev_outputs = [cell_output] + rev_outputs # reverse encoder
 			rev_outputs = tf.stack(rev_outputs) 
-			outputs = tf.concat([outputs, rev_outputs], axis=2)
+			##outputs = tf.concat([outputs, rev_outputs], axis=2)
+			outputs = outputs + rev_outputs ## addition. would maintain outout size equal to lstm cell size.
 
 		return outputs
 
@@ -118,17 +119,19 @@ class RNNModel:
 			cell_size = h_prev.shape[1]
 			encoder_sequence_length = shap[1]
 
-			winit = tf.get_variable('winit', [encoder_vals_size, lstm_cell_size] )
-			encoder_vals = tf.reshape(encoder_vals, [-1,encoder_vals_size])
-			encoder_vals = tf.matmul( encoder_vals, winit )
-			encoder_vals = tf.reshape(encoder_vals, [-1,shap[1],lstm_cell_size]) # N, encoder_sequence_length, lstm_cell_size
+			## winit = tf.get_variable('winit', [encoder_vals_size, lstm_cell_size] ) # not there in priginal formulation.  needed if concatenating forward and reverse lstms on encoder side. Can be removed if encoder_vals_size=lstm_cell_size
+			## encoder_vals = tf.reshape(encoder_vals, [-1,encoder_vals_size])
+			## encoder_vals = tf.matmul( encoder_vals, winit )
+			## encoder_vals = tf.reshape(encoder_vals, [-1,shap[1],lstm_cell_size]) # N, encoder_sequence_length, lstm_cell_size
 
 			# sentinel : N, lstm_cell_size
 			sentinel_expanded = tf.expand_dims(sentinel,1)  # N, 1, lstm_cell_size
 			encoder_vals = tf.concat([sentinel_expanded, encoder_vals], axis=1) # N, encoder_sequence_length+1, lstm_cell_size
 
 			watt = tf.get_variable('watt', [cell_size, cell_size] )
-			h_att = tf.expand_dims(tf.matmul(h_prev, watt), 1) #+ b	# (N,1,cell_size)
+			batt = tf.get_variable('batt', [1, cell_size] )
+			query = tf.tanh( tf.matmul(h_prev, watt) + batt ) # . this is "query"
+			h_att = tf.expand_dims( query , 1)	# (N,1,cell_size)  
 			out_att = tf.reduce_sum( tf.multiply( h_att, encoder_vals ), axis=2 ) # (N, encoder_sequence_length+1)
 			alpha = tf.nn.softmax(out_att)  # (N, encoder_sequence_length+1)
 			sentinel_weight = alpha[:,0]
@@ -166,25 +169,27 @@ class RNNModel:
 		# outputs_list: list of tensor(batch_size, cell_size) with time_steps number of items
 		
 		alpha, sentinel_weight = alpha_sentinel  #sentinel_weight: N,
-		pred =  tf.matmul(output, w_out) #+ b_out  #(N,vocab_size)
+		
+		pred =  tf.matmul(output, w_out) + b_out  #(N,vocab_size)
+		pred_softmax = tf.nn.softmax(pred)
 		sentinel_weight = tf.expand_dims(sentinel_weight,1) # N,1
-		pred = pred * sentinel_weight
+		pred = pred_softmax * sentinel_weight  # g * rnnprob(w)
+		
 		r = tf.expand_dims( tf.range( batch_size ) , 1 )
 		encoder_length = tf.shape(encoder_input_sequence)[1]
-		#print "r= ",r
-		#print "encoder_length = ",encoder_length
 		r = tf.tile(r,[1,encoder_length]) # batch_size, encoder_length
 		r_concat = tf.stack( [r,encoder_input_sequence ], axis=2 ) # batch_size, encoder_length, 2
-		#print "r_concat = ",r_concat
 		r_concat_flattened = tf.reshape(r_concat,[-1,2]) # batch_size * encoder_length, 2
 		r_concat_flattened = tf.cast(r_concat_flattened, tf.int64)
-		alpha = alpha * (tf.ones(sentinel_weight.shape) - sentinel_weight) # alpha: N,encoder_length. sentinel_weight: N,1
+		#alpha = alpha * (tf.ones(sentinel_weight.shape) ## sum of alpha is already (1-g) ## - sentinel_weight) 
+		# alpha: N,encoder_length. sentinel_weight: N,1
 		alpha_flattened = tf.reshape(alpha,[-1]) # batch_size * encoder_length
 		alpha_flattened = alpha_flattened   # batch_size * encoder_length
 		dense_shape = np.array([batch_size, vocab_size], dtype=np.int64)
 		pointer_probs = tf.SparseTensor(indices=r_concat_flattened, values=alpha_flattened, dense_shape=dense_shape)
 		pred = tf.sparse_add(pred, pointer_probs)
-		return pred
+		
+		return pred # Note: these are probabiltiies. use sparse cross entropy with logits only after processing
 
 	def initEmbeddings(self, emb_scope, token_vocab_size, embeddings_dim, reuse=False, pretrained_embeddings=None):
 		with tf.variable_scope(emb_scope, reuse=reuse):
@@ -362,9 +367,9 @@ class RNNModel:
 				#params['token_emb_mat'] = None
 				inp = tf.nn.embedding_lookup(token_emb_mat, token_lookup_sequences_decoder_placeholder) 
 				pred = self.decoderRNN(inp, params, mode='training')  # timesteps, N, vocab_size
-				pred_for_loss = pred # since sparse_softmax_cross_entropy_with_logits takes softmax on its own as well
+				pred_for_loss = tf.log(pred) # since sparse_softmax_cross_entropy_with_logits takes softmax on its own as well
 				pred = tf.unstack(pred)
-				pred = tf.stack( [ tf.nn.softmax(vals) for vals in pred ] )
+				#pred = tf.stack( [ tf.nn.softmax(vals) for vals in pred ] )  ## pred is already a prob distribution
 
 				if is_training:
 					pred_masked = pred_for_loss 
