@@ -154,8 +154,13 @@ def main():
                     outputLine=" ".join(outputLine)+"\n"
                     validOutFile.write(outputLine)
                 validOutFile.close()
-
-
+                
+                import os
+                #os.system("./multi-bleu.perl -lc ../data/valid.original.nltktok < "+saved_model_path+".valid.output")
+                BLEUOutput=os.popen("./multi-bleu.perl -lc ../data/valid.original.nltktok < "+saved_model_path+".valid.output").read()
+                BLEUOutputFile=open(saved_model_path+".valid.BLEU","w")
+                BLEUOutputFile.write(BLEUOutput)
+                BLEUOutputFile.close()
 
 
 if __name__ == "__main__":
