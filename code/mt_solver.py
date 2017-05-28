@@ -34,13 +34,8 @@ class Solver:
 
 		self.buckets = buckets 
 		self.preds = []
-		self.decoder_outputs_inference_list = []
 		self.encoder_outputs_list = []
-		self.token_lookup_sequences_placeholder_list = []
-		self.token_lookup_sequences_decoder_placeholder_list = []
-		self.token_output_sequences_decoder_placeholder_list = []
 		self.cost_list = []
-		self.mask_list = []
 		self.optimizer_list = []
 
 		optimizer_typ =  "adam" #"sgd" #"adam"
@@ -60,7 +55,6 @@ class Solver:
 				encoder_outputs = self.model_obj.getEncoderModel(config, mode='training', reuse= reuse, bucket_num=bucket_num )
 				pred = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=True, mode='training', reuse=reuse, bucket_num=bucket_num)
 				self.preds.append(pred)
-
 				self.encoder_outputs_list.append(encoder_outputs)
 				self.cost_list.append( self.model_obj.cost )
 				cost = self.model_obj.cost 
@@ -83,6 +77,7 @@ class Solver:
 			self.token_lookup_sequences_decoder_placeholder_list = self.model_obj.token_lookup_sequences_decoder_placeholder_list
 			self.token_output_sequences_decoder_placeholder_list = self.model_obj.token_output_sequences_decoder_placeholder_list
 			self.mask_list = self.model_obj.masker_list
+			self.token_output_sequences_decoder_inpmatch_placeholder_list = self.model_obj.token_output_sequences_decoder_inpmatch_placeholder_list
 		else:
 			encoder_outputs = self.model_obj.getEncoderModel(config, mode='inference', reuse=reuse)
 			self.decoder_outputs_inference, self.encoder_outputs = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, 	mode='inference', reuse=False)	
@@ -106,7 +101,7 @@ class Solver:
 
 
 		for bucket_num,bucket in enumerate(self.buckets):
-			encoder_inputs, decoder_inputs, decoder_outputs, decoder_outputs_matching_inputs = train_feed_dict[bucket_num]
+			encoder_inputs, decoder_inputs, decoder_outputs, decoder_outputs_inpmatch = train_feed_dict[bucket_num]
 			#cost = self.model_obj.cost
 
 			# if y is passed as (N, seq_length, 1): change it to (N,seq_length)
@@ -117,7 +112,8 @@ class Solver:
 			token_lookup_sequences_placeholder = self.token_lookup_sequences_placeholder_list[bucket_num]
 			token_output_sequences_decoder_placeholder = self.token_output_sequences_decoder_placeholder_list[bucket_num]
 			token_lookup_sequences_decoder_placeholder = self.token_lookup_sequences_decoder_placeholder_list[bucket_num]
-			feed_dct={token_lookup_sequences_placeholder:encoder_inputs, token_output_sequences_decoder_placeholder:decoder_outputs, token_lookup_sequences_decoder_placeholder:decoder_inputs}
+			token_output_sequences_decoder_inpmatch_placeholder = self.token_output_sequences_decoder_inpmatch_placeholder_list[bucket_num]
+			feed_dct={token_lookup_sequences_placeholder:encoder_inputs, token_output_sequences_decoder_placeholder:decoder_outputs, token_lookup_sequences_decoder_placeholder:decoder_inputs, token_output_sequences_decoder_inpmatch_placeholder:decoder_outputs_inpmatch}
 
 			#print "token_lookup_sequences_placeholder,  = ",token_lookup_sequences_placeholder, "\n token_output_sequences_decoder_placeholder = ",token_output_sequences_decoder_placeholder,"token_lookup_sequences_decoder_placeholder=",token_lookup_sequences_decoder_placeholder
 			#print "\n encoder_inputs = ",encoder_inputs.shape, "\ndecoder_outputs =  ",decoder_outputs.shape, "\n decoder_inputs =  ", decoder_inputs.shape
@@ -163,7 +159,7 @@ class Solver:
 				if step % display_step == 0:
 					#loss = sess.run(cost, feed_dict= feed_dict_cur)
 					encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, decoder_outputs_matching_inputs = val_feed_dct
-					loss = self.getLoss( config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, token_lookup_sequences_placeholder, token_lookup_sequences_decoder_placeholder, token_output_sequences_decoder_placeholder, masker, cost, sess)
+					loss = self.getLoss( config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, token_lookup_sequences_placeholder, token_lookup_sequences_decoder_placeholder, token_output_sequences_decoder_placeholder, masker, token_output_sequences_decoder_inpmatch_placeholder, decoder_outputs_matching_inputs, cost, sess)
 					bleu = self.getBleuOnVal( config, reverse_vocab, val_feed_dct, sess, model_name)
 					print "step ",step," : loss = ",loss
 					print "step ",step," : bleu = ",bleu
@@ -243,7 +239,7 @@ class Solver:
 
 	###################################################################################
 
-	def getLoss(self, config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, enc_inp_placeholder, dec_in_placeholder, dec_out_placeholder, mask_placeholder,  loss_variable, sess): # Probabilities
+	def getLoss(self, config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, enc_inp_placeholder, dec_in_placeholder, dec_out_placeholder, mask_placeholder, token_output_sequences_decoder_inpmatch_placeholder, decoder_outputs_matching_inputs, loss_variable, sess): # Probabilities
 		print " getLoss ...... ============================================================"
 		batch_size = config['batch_size']
 		num_batches = ( len(encoder_input_sequences) + batch_size - 1)/ batch_size 
@@ -253,6 +249,7 @@ class Solver:
 			cur_input_sequences = encoder_input_sequences[i*batch_size:(i+1)*batch_size]
 			cur_decoder_input_sequences = decoder_input_sequences[i*batch_size:(i+1)*batch_size]
 			cur_decoder_output_sequences = decoder_output_sequences[i*batch_size:(i+1)*batch_size]
+			cur_decoder_outputs_matching_inputs = decoder_outputs_matching_inputs[i*batch_size:(i+1)*batch_size]
 			lim = len(cur_input_sequences)
 			if len(cur_input_sequences)<batch_size:
 				gap = batch_size - len(cur_input_sequences)
@@ -260,7 +257,7 @@ class Solver:
 					cur_decoder_output_sequences = np.vstack( (cur_decoder_output_sequences, cur_decoder_output_sequences[0]) )
 					cur_decoder_input_sequences = np.vstack( (cur_decoder_input_sequences, cur_decoder_input_sequences[0]) )
 					cur_input_sequences = np.vstack( (cur_input_sequences, cur_input_sequences[0]) )
-			feed_dct = {enc_inp_placeholder:cur_input_sequences, dec_out_placeholder:cur_decoder_output_sequences, dec_in_placeholder:cur_decoder_input_sequences}
+			feed_dct = {enc_inp_placeholder:cur_input_sequences, dec_out_placeholder:cur_decoder_output_sequences, dec_in_placeholder:cur_decoder_input_sequences, token_output_sequences_decoder_inpmatch_placeholder:cur_decoder_outputs_matching_inputs}
 			mask = np.zeros(cur_decoder_output_sequences.shape, dtype=np.float)
 			x,y = np.nonzero(cur_decoder_output_sequences)
 			mask[x,y]=1

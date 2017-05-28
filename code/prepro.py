@@ -193,10 +193,10 @@ class PreProcessing:
 		for cur_outputs, cur_inputs in zip(decoder_outputs, inputs):
 			tmp = []
 			for output_token in cur_outputs:
-				idx = np.zeros(len(cur_inputs))
+				idx = np.zeros(len(cur_inputs), dtype=np.float32)
 				for j,token in enumerate(cur_inputs):
 					if token == output_token:
-						idx[j]=1
+						idx[j]=1.0
 				tmp.append(idx)
 			matching_input_token.append(tmp)
 		matching_input_token = np.array(matching_input_token)
@@ -209,4 +209,4 @@ class PreProcessing:
 			np.random.shuffle(indices)
 		print "np.sum(np.sum(np.sum(matching_input_token))) = ",np.sum(np.sum(np.sum(matching_input_token)))
 		return encoder_inputs, decoder_inputs, decoder_outputs, matching_input_token
-		
+

@@ -36,7 +36,7 @@ class RNNModel:
 				self.token_output_sequences_decoder_placeholder_list.append( tf.placeholder("int32", [None, max_sentence_length], name="token_output_sequences_decoder_placeholder"+str(bucket_num)) )
 				self.token_lookup_sequences_decoder_placeholder_list.append( tf.placeholder("int32", [None, max_sentence_length], name="token_lookup_sequences_decoder_placeholder"+str(bucket_num)) ) # token_lookup_sequences
 
-				self.token_output_sequences_decoder_inpmatch_placeholder_list.append( tf.placeholder("int32", [None, bucket['max_output_seq_length'], bucket['max_input_seq_length']], name="token_output_sequences_decoder_inpmatch_placeholder"+str(bucket_num)) )
+				self.token_output_sequences_decoder_inpmatch_placeholder_list.append( tf.placeholder("float32", [None, bucket['max_output_seq_length'], bucket['max_input_seq_length']], name="token_output_sequences_decoder_inpmatch_placeholder"+str(bucket_num)) )
 
 		print "========== INIT OVER ============= "
 
@@ -252,7 +252,6 @@ class RNNModel:
 		embeddings_dim = params['embeddings_dim']
 		batch_time_steps = params['max_output_seq_length']
 		encoder_input_sequence = params['encoder_input_sequence']
-		decoder_output_inpmatch_sequence = params['decoder_output_inpmatch_sequence']
 
 		if 'token_emb_mat' in params:
 			token_emb_mat = params['token_emb_mat']
@@ -286,21 +285,23 @@ class RNNModel:
 		sentinel = tf.ones([batch_size,lstm_cell_size], dtype=tf.float32)
 		with tf.variable_scope("RNN"):
 			if mode=='training':
+				decoder_output_inpmatch_sequence = params['decoder_output_inpmatch_sequence']
 				pred = []
 				for time_step in range(num_steps):
 					if time_step > 0: tf.get_variable_scope().reuse_variables()
 					inputs_current_time_step = inputs[:, time_step, :]
-					cur_decoder_output_inpmatch_sequence = decoder_output_inpmatch_sequence[:, time_step, :] # N,inp_seq_length 
 					(cell_output, state), alpha, sentinel_weight = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs, prev_cell_output=cell_output, sentinel=sentinel, reuse=(time_step!=0), state=state)
 					cur_pred = self.getDecoderOutput(cell_output, lstm_cell_size, token_vocab_size, w_out, b_out, (alpha,sentinel_weight), encoder_input_sequence, batch_size, token_vocab_size )
 					pred.append(cur_pred)
-					
+
+					cur_decoder_output_inpmatch_sequence = decoder_output_inpmatch_sequence[:, time_step, :] # N,inp_seq_length 
+					print "cur_decoder_output_inpmatch_sequence = ",cur_decoder_output_inpmatch_sequence
 					# alpha: N, inp_seq_length
 					cur_sentinel_attention_loss = tf.reduce_sum( alpha * cur_decoder_output_inpmatch_sequence ) # N
-					if time_step > 0:
-						sentinel_loss = - tf.reduce_sum( tf.log(sentinel_weight) + cur_sentinel_attention_loss ) # N -> 1
+					if time_step == 0:
+						sentinel_loss = - tf.reduce_sum( tf.log(sentinel_weight+ cur_sentinel_attention_loss) ) # N -> 1
 					else:
-						sentinel_loss = sentinel_loss + (- tf.reduce_sum( tf.log(sentinel_weight) + cur_sentinel_attention_loss )) # N -> 1
+						sentinel_loss = sentinel_loss + (- tf.reduce_sum( tf.log(sentinel_weight+ cur_sentinel_attention_loss) )) # N -> 1
 				
 				pred = tf.stack(pred), sentinel_loss
 				tf.get_variable_scope().reuse_variables()
@@ -344,6 +345,7 @@ class RNNModel:
 			masker = self.masker_list[bucket_num]
 			token_output_sequences_placeholder = self.token_output_sequences_decoder_placeholder_list[bucket_num]
 			encoder_input_sequence = self.token_lookup_sequences_placeholder_list[bucket_num] # encoder
+			decoder_output_inpmatch_sequence = self.token_output_sequences_decoder_inpmatch_placeholder_list[bucket_num]
 		else:
 			encoder_input_sequence = self.token_lookup_sequences_placeholder_inference
 
@@ -380,6 +382,8 @@ class RNNModel:
 				params['lstm_cell'] = lstm_cell 
 				params['encoder_input_sequence'] = encoder_input_sequence
 				params['encoder_outputs'] = encoder_outputs
+				params['decoder_output_inpmatch_sequence'] = decoder_output_inpmatch_sequence
+
 				#params['token_emb_mat'] = None
 				inp = tf.nn.embedding_lookup(token_emb_mat, token_lookup_sequences_decoder_placeholder) 
 				pred, sentinel_loss = self.decoderRNN(inp, params, mode='training')  # timesteps, N, vocab_size
