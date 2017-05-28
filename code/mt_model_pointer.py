@@ -98,7 +98,7 @@ class RNNModel:
 			pretrained_embeddings=None
 			if config['pretrained_embeddings']:
 				pretrained_embeddings = config['encoder_embeddings_matrix']
-			self.encoder_token_emb_mat = token_emb_mat = self.initEmbeddings('emb_encoder', token_vocab_size, embeddings_dim, reuse=reuse, pretrained_embeddings=pretrained_embeddings)
+			self.encoder_token_emb_mat = token_emb_mat = self.initEmbeddings('emb_encoder', token_vocab_size, embeddings_dim, reuse=reuse, pretrained_embeddings=pretrained_embeddings, pretrained_embeddings_are_trainable=config['pretrained_embeddings_are_trainable'])
 		inp = tf.nn.embedding_lookup(token_emb_mat, token_lookup_sequences_placeholder) 
 			
 		# run lstm 
@@ -191,10 +191,11 @@ class RNNModel:
 		
 		return pred # Note: these are probabiltiies. use sparse cross entropy with logits only after processing
 
-	def initEmbeddings(self, emb_scope, token_vocab_size, embeddings_dim, reuse=False, pretrained_embeddings=None):
+	def initEmbeddings(self, emb_scope, token_vocab_size, embeddings_dim, pretrained_embeddings_are_trainable=True, reuse=False, pretrained_embeddings=None):
+		print "pretrained_embeddings_are_trainable = ",pretrained_embeddings_are_trainable
 		with tf.variable_scope(emb_scope, reuse=reuse):
 			if pretrained_embeddings!=None:
-				token_emb_mat = tf.get_variable("emb_mat", shape=[token_vocab_size, embeddings_dim], dtype='float', initializer=tf.constant_initializer(np.array(pretrained_embeddings)) )
+				token_emb_mat = tf.get_variable("emb_mat", shape=[token_vocab_size, embeddings_dim], dtype='float', initializer=tf.constant_initializer(np.array(pretrained_embeddings)), trainable=pretrained_embeddings_are_trainable )
 				token_emb_mat = tf.concat( [tf.zeros([1, embeddings_dim]), tf.slice(token_emb_mat, [1,0],[-1,-1]) ], axis=0 )	
 			else:
 				token_emb_mat = tf.get_variable("emb_mat", shape=[token_vocab_size, embeddings_dim], dtype='float')
@@ -344,7 +345,7 @@ class RNNModel:
 			else:
 				if config['pretrained_embeddings']:
 					pretrained_embeddings = config['decoder_embeddings_matrix']
-				self.decoder_token_emb_mat = token_emb_mat = self.initEmbeddings(emb_scope, token_vocab_size, embeddings_dim, reuse=reuse, pretrained_embeddings=pretrained_embeddings)
+				self.decoder_token_emb_mat = token_emb_mat = self.initEmbeddings(emb_scope, token_vocab_size, embeddings_dim, reuse=reuse, pretrained_embeddings=pretrained_embeddings, pretrained_embeddings_are_trainable=config['pretrained_embeddings_are_trainable'])
 
 		with tf.variable_scope('decoder',reuse=reuse):
 				

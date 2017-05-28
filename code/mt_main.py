@@ -40,6 +40,7 @@ def main():
 	params['use_pointer'] = config.use_pointer
 	params['pretrained_embeddings_path'] = config.pretrained_embeddings_path
 	params['pretrained_embeddings_are_trainable'] = config.pretrained_embeddings_are_trainable
+	params['use_additional_info_from_pretrained_embeddings'] = config.use_additional_info_from_pretrained_embeddings
 	params['max_vocab_size'] = config.max_vocab_size
 	params['do_vocab_pruning'] = config.do_vocab_pruning
 	params['use_reverse_encoder'] = config.use_reverse_encoder
@@ -96,6 +97,7 @@ def main():
 	if params['pretrained_embeddings']:
 		pretrained_embeddings = pickle.load(open(params['pretrained_embeddings_path'],"r"))
 		word_to_idx = preprocessing.word_to_idx
+
 		encoder_embedding_matrix = np.random.rand( params['vocab_size'], params['embeddings_dim'] )
 		decoder_embedding_matrix = np.random.rand( params['vocab_size'], params['embeddings_dim'] )
 		not_found_count = 0
@@ -110,6 +112,24 @@ def main():
 		print "not found count = ", not_found_count 
 		params['encoder_embeddings_matrix'] = encoder_embedding_matrix 
 		params['decoder_embeddings_matrix'] = decoder_embedding_matrix 
+
+		if params['use_additional_info_from_pretrained_embeddings']:
+			additional_count=0
+			tmp=[]
+			for token in pretrained_embeddings:
+				if token not in preprocessing.word_to_idx:
+					preprocessing.word_to_idx[token] = preprocessing.word_to_idx_ctr
+					preprocessing.idx_to_word[preprocessing.word_to_idx_ctr] = token
+					preprocessing.word_to_idx_ctr+=1
+					tmp.append(pretrained_embeddings[token])
+					additional_count+=1
+			print "additional_count = ",additional_count
+			params['vocab_size'] = preprocessing.word_to_idx_ctr
+			tmp = np.array(tmp)
+			encoder_embedding_matrix = np.vstack([encoder_embedding_matrix,tmp])
+			decoder_embedding_matrix = np.vstack([decoder_embedding_matrix,tmp])
+			print "decoder_embedding_matrix.shape ",decoder_embedding_matrix.shape
+			print "New vocab size = ",params['vocab_size']
 
 
 	if mode=='train' or mode=="debug":
