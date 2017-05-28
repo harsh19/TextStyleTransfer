@@ -164,7 +164,7 @@ def main():
 		_ = rnn_model.getModel(params, mode='inference', reuse=False, buckets=None)
 		print "----Running inference-----"
 		decoder_outputs_inference, decoder_ground_truth_outputs = rnn_model.solveAll(params, val_encoder_inputs, val_decoder_outputs, preprocessing.idx_to_word)
-			   
+                			   
 		validOutFile=open(saved_model_path+".valid.output","w")
 		for outputLine,groundLine in zip(decoder_outputs_inference,decoder_ground_truth_outputs):
 			print outputLine
@@ -179,10 +179,39 @@ def main():
 		
 		import os
 		#os.system("./multi-bleu.perl -lc ../data/valid.original.nltktok < "+saved_model_path+".valid.output")
-		BLEUOutput=os.popen("./multi-bleu.perl -lc ../data/valid.original.nltktok < "+saved_model_path+".valid.output").read()
+		BLEUOutput=os.popen("perl multi-bleu.perl -lc ../data/valid.original.nltktok < "+saved_model_path+".valid.output").read()
 		BLEUOutputFile=open(saved_model_path+".valid.BLEU","w")
 		BLEUOutputFile.write(BLEUOutput)
 		BLEUOutputFile.close()
+
+		test_encoder_inputs, test_decoder_inputs, test_decoder_outputs = test
+		#print "test_encoder_inputs = ",test_encoder_inputs
+
+		if len(test_decoder_outputs.shape)==3:
+			test_decoder_outputs=np.reshape(test_decoder_outputs, (test_decoder_outputs.shape[0], test_decoder_outputs.shape[1]))
+
+
+		decoder_outputs_inference, decoder_ground_truth_outputs = rnn_model.solveAll(params, test_encoder_inputs, test_decoder_outputs, preprocessing.idx_to_word)
+                			   
+		testOutFile=open(saved_model_path+".test.output","w")
+		for outputLine,groundLine in zip(decoder_outputs_inference,decoder_ground_truth_outputs):
+			print outputLine
+			outputLine=preprocessing.fromIdxSeqToVocabSeq(outputLine)
+			if "sentend" in outputLine:
+				outputLine=outputLine[:outputLine.index("sentend")]
+			print outputLine
+			print preprocessing.fromIdxSeqToVocabSeq(groundLine)
+			outputLine=" ".join(outputLine)+"\n"
+			testOutFile.write(outputLine)
+		testOutFile.close()
+		
+		import os
+		#os.system("./multi-bleu.perl -lc ../data/valid.original.nltktok < "+saved_model_path+".valid.output")
+		BLEUOutput=os.popen("perl multi-bleu.perl -lc ../data/test.original.nltktok < "+saved_model_path+".test.output").read()
+		BLEUOutputFile=open(saved_model_path+".test.BLEU","w")
+		BLEUOutputFile.write(BLEUOutput)
+		BLEUOutputFile.close()
+
 
 
 if __name__ == "__main__":
