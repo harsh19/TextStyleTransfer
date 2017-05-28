@@ -233,7 +233,7 @@ class Solver:
 					encoder_inputs_cur = np.vstack( (encoder_inputs_cur,encoder_inputs[0]) )
 					decoder_gt_outputs_cur = np.vstack( (decoder_gt_outputs_cur,decoder_ground_truth_outputs[0]) )
 					#decoder_gt_outputs_cur.extend(decoder_ground_truth_outputs[0]*gap)
-			decoder_outputs_inference_cur = self.runInference(config, encoder_inputs_cur, decoder_gt_outputs_cur, reverse_vocab, sess=None, print_all=False)
+			decoder_outputs_inference_cur = self.runInference(config, encoder_inputs_cur, decoder_gt_outputs_cur, reverse_vocab, sess=sess, print_all=False)
 			decoder_outputs_inference.extend( decoder_outputs_inference_cur[:lim] )
 		print len(encoder_inputs)
 		print len(decoder_outputs_inference)

@@ -103,15 +103,17 @@ def sampleFromDistribution(vals):
 
 ################################################################
 import os
-def getBlue(validOutFile_name, original_data_path, BLEUOutputFile_path, decoder_outputs_inference, decoder_ground_truth_outputs, preprocessing_obj):
+def getBlue(validOutFile_name, original_data_path, BLEUOutputFile_path, decoder_outputs_inference, decoder_ground_truth_outputs, preprocessing_obj, verbose=False):
 	validOutFile=open(validOutFile_name,"w")
 	for outputLine,groundLine in zip(decoder_outputs_inference, decoder_ground_truth_outputs):
-		print outputLine
+		if verbose:
+			print outputLine
 		outputLine=preprocessing_obj.fromIdxSeqToVocabSeq(outputLine)
 		if "sentend" in outputLine:
 			outputLine=outputLine[:outputLine.index("sentend")]
-		print outputLine
-		print preprocessing_obj.fromIdxSeqToVocabSeq(groundLine)
+		if verbose:
+			print outputLine
+			print preprocessing_obj.fromIdxSeqToVocabSeq(groundLine)
 		outputLine=" ".join(outputLine)+"\n"
 		validOutFile.write(outputLine)
 	validOutFile.close()
