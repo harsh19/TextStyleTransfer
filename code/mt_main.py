@@ -45,7 +45,9 @@ def main():
 	params['do_vocab_pruning'] = config.do_vocab_pruning
 	params['use_reverse_encoder'] = config.use_reverse_encoder
 
-	print "params = ", params
+	print "PARAMS:"
+	for key,value in params.items():
+		print " -- ",key," = ",value
 	buckets = {  0:{'max_input_seq_length':params['max_input_seq_length'], 'max_output_seq_length':params['max_output_seq_length']} }
 	print "buckets = ",buckets
 	
