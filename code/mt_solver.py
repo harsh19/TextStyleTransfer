@@ -160,8 +160,8 @@ class Solver:
 					#loss = sess.run(cost, feed_dict= feed_dict_cur)
 					encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, decoder_outputs_matching_inputs = val_feed_dct
 					loss = self.getLoss( config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, token_lookup_sequences_placeholder, token_lookup_sequences_decoder_placeholder, token_output_sequences_decoder_placeholder, masker, token_output_sequences_decoder_inpmatch_placeholder, decoder_outputs_matching_inputs, cost, sess)
-					bleu = self.getBleuOnVal( config, reverse_vocab, val_feed_dct, sess, model_name)
 					print "step ",step," : loss = ",loss
+					bleu = self.getBleuOnVal( config, reverse_vocab, val_feed_dct, sess, model_name)
 					print "step ",step," : bleu = ",bleu
 				if step % sample_step == 0:
   					self.runInference( config, encoder_inputs[:batch_size], decoder_outputs[:batch_size], reverse_vocab, sess )
@@ -257,6 +257,7 @@ class Solver:
 					cur_decoder_output_sequences = np.vstack( (cur_decoder_output_sequences, cur_decoder_output_sequences[0]) )
 					cur_decoder_input_sequences = np.vstack( (cur_decoder_input_sequences, cur_decoder_input_sequences[0]) )
 					cur_input_sequences = np.vstack( (cur_input_sequences, cur_input_sequences[0]) )
+					cur_decoder_outputs_matching_inputs = np.concatenate( (cur_decoder_outputs_matching_inputs, np.array([cur_decoder_outputs_matching_inputs[0]]) ) )
 			feed_dct = {enc_inp_placeholder:cur_input_sequences, dec_out_placeholder:cur_decoder_output_sequences, dec_in_placeholder:cur_decoder_input_sequences, token_output_sequences_decoder_inpmatch_placeholder:cur_decoder_outputs_matching_inputs}
 			mask = np.zeros(cur_decoder_output_sequences.shape, dtype=np.float)
 			x,y = np.nonzero(cur_decoder_output_sequences)
