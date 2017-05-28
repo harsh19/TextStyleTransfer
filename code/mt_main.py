@@ -86,6 +86,7 @@ def main():
 		preprocessing = pickle.load(open("./tmp/preprocessing.obj","r") )
 
 	params['vocab_size'] = preprocessing.vocab_size
+	params['preprocessing'] = preprocessing
 	train = data['train']
 	val = data['valid']
 	test = data['test']

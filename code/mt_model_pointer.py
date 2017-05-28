@@ -25,6 +25,7 @@ class RNNModel:
 			self.token_lookup_sequences_decoder_placeholder_list = []
 			self.masker_list = []
 			self.token_output_sequences_decoder_placeholder_list = []
+			self.token_output_sequences_decoder_inpmatch_placeholder_list = []
 			self.token_lookup_sequences_placeholder_list = []
 
 			for bucket_num, bucket in buckets_dict.items():
@@ -34,6 +35,9 @@ class RNNModel:
 				self.masker_list.append( tf.placeholder("float32", [None, max_sentence_length], name="masker"+str(bucket_num)) )
 				self.token_output_sequences_decoder_placeholder_list.append( tf.placeholder("int32", [None, max_sentence_length], name="token_output_sequences_decoder_placeholder"+str(bucket_num)) )
 				self.token_lookup_sequences_decoder_placeholder_list.append( tf.placeholder("int32", [None, max_sentence_length], name="token_lookup_sequences_decoder_placeholder"+str(bucket_num)) ) # token_lookup_sequences
+
+				self.token_output_sequences_decoder_inpmatch_placeholder_list.append( tf.placeholder("int32", [None, bucket['max_output_seq_length'], bucket['max_input_seq_length']], name="token_output_sequences_decoder_inpmatch_placeholder"+str(bucket_num)) )
+
 		print "========== INIT OVER ============= "
 
 
@@ -248,6 +252,8 @@ class RNNModel:
 		embeddings_dim = params['embeddings_dim']
 		batch_time_steps = params['max_output_seq_length']
 		encoder_input_sequence = params['encoder_input_sequence']
+		decoder_output_inpmatch_sequence = params['decoder_output_inpmatch_sequence']
+
 		if 'token_emb_mat' in params:
 			token_emb_mat = params['token_emb_mat']
 		else:
@@ -284,10 +290,19 @@ class RNNModel:
 				for time_step in range(num_steps):
 					if time_step > 0: tf.get_variable_scope().reuse_variables()
 					inputs_current_time_step = inputs[:, time_step, :]
+					cur_decoder_output_inpmatch_sequence = decoder_output_inpmatch_sequence[:, time_step, :] # N,inp_seq_length 
 					(cell_output, state), alpha, sentinel_weight = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs, prev_cell_output=cell_output, sentinel=sentinel, reuse=(time_step!=0), state=state)
 					cur_pred = self.getDecoderOutput(cell_output, lstm_cell_size, token_vocab_size, w_out, b_out, (alpha,sentinel_weight), encoder_input_sequence, batch_size, token_vocab_size )
 					pred.append(cur_pred)
-				pred = tf.stack(pred)
+					
+					# alpha: N, inp_seq_length
+					cur_sentinel_attention_loss = tf.reduce_sum( alpha * cur_decoder_output_inpmatch_sequence ) # N
+					if time_step > 0:
+						sentinel_loss = - tf.reduce_sum( tf.log(sentinel_weight) + cur_sentinel_attention_loss ) # N -> 1
+					else:
+						sentinel_loss = sentinel_loss + (- tf.reduce_sum( tf.log(sentinel_weight) + cur_sentinel_attention_loss )) # N -> 1
+				
+				pred = tf.stack(pred), sentinel_loss
 				tf.get_variable_scope().reuse_variables()
 
 			elif mode=='inference':
@@ -367,7 +382,7 @@ class RNNModel:
 				params['encoder_outputs'] = encoder_outputs
 				#params['token_emb_mat'] = None
 				inp = tf.nn.embedding_lookup(token_emb_mat, token_lookup_sequences_decoder_placeholder) 
-				pred = self.decoderRNN(inp, params, mode='training')  # timesteps, N, vocab_size
+				pred, sentinel_loss = self.decoderRNN(inp, params, mode='training')  # timesteps, N, vocab_size
 				pred_for_loss = tf.log(pred) # since sparse_softmax_cross_entropy_with_logits takes softmax on its own as well
 				pred = tf.unstack(pred)
 				#pred = tf.stack( [ tf.nn.softmax(vals) for vals in pred ] )  ## pred is already a prob distribution
@@ -380,7 +395,8 @@ class RNNModel:
 					cost = tf.reduce_sum(cost) # N
 					masker_sum = tf.reduce_sum(masker) # N
 					cost = tf.divide(cost, masker_sum) # N
-					self.cost = cost
+					sentinel_loss = tf.divide(sentinel_loss, masker_sum) # N
+					self.cost = cost + sentinel_loss
 
 			return pred #[ tf.nn.softmax(vals) for vals in pred]
 
