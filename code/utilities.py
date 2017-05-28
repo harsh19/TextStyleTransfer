@@ -101,3 +101,22 @@ def sampleFromDistribution(vals):
 		return len(vals)-1
 
 
+################################################################
+import os
+def getBlue(validOutFile_name, original_data_path, BLEUOutputFile_path, decoder_outputs_inference, decoder_ground_truth_outputs, preprocessing_obj):
+	validOutFile=open(validOutFile_name,"w")
+	for outputLine,groundLine in zip(decoder_outputs_inference, decoder_ground_truth_outputs):
+		print outputLine
+		outputLine=preprocessing_obj.fromIdxSeqToVocabSeq(outputLine)
+		if "sentend" in outputLine:
+			outputLine=outputLine[:outputLine.index("sentend")]
+		print outputLine
+		print preprocessing_obj.fromIdxSeqToVocabSeq(groundLine)
+		outputLine=" ".join(outputLine)+"\n"
+		validOutFile.write(outputLine)
+	validOutFile.close()
+
+	BLEUOutput=os.popen("perl multi-bleu.perl -lc " + original_data_path + " < " + validOutFile_name).read()
+	BLEUOutputFile=open(BLEUOutputFile_path,"w")
+	BLEUOutputFile.write(BLEUOutput)
+	BLEUOutputFile.close()
