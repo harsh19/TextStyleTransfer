@@ -189,6 +189,18 @@ class PreProcessing:
 		decoder_inputs = np.array( [ sequence[:-1] for sequence in outputs ] )
 		#decoder_outputs = np.array( [ np.expand_dims(sequence[1:],-1) for sequence in outputs ] )
 		decoder_outputs = np.array( [ sequence[1:] for sequence in outputs ] )
+		matching_input_token = []
+		for cur_outputs, cur_inputs in zip(decoder_outputs, inputs):
+			tmp = []
+			for output_token in cur_outputs:
+				idx = -1
+				for j,token in enumerate(cur_inputs):
+					if token == output_token:
+						idx = j
+						break
+				tmp.append(idx)
+			matching_input_token.append(tmp)
+		matching_input_token = np.array(matching_input_token)
 		encoder_inputs = np.array(inputs)
 
 		if do_shuffle:
@@ -197,5 +209,5 @@ class PreProcessing:
 			np.random.seed(seed)
 			np.random.shuffle(indices)
 
-		return encoder_inputs, decoder_inputs, decoder_outputs
+		return encoder_inputs, decoder_inputs, decoder_outputs, matching_input_token
 		

@@ -15,16 +15,20 @@ import mt_solver as solver
 import sys
 from prepro import PreProcessing
 
-'''
-# usage:
-python main.py train <num_of_iters> <model_name>
+########################
+usage =  '''
+python mt_main.py train <num_of_iters> <model_name>
 OR
-python main.py inference <saved_model_path>
+python mt_main.py inference <saved_model_path>
 OR
-python main.py debug
+python mt_main.py debug
 OR 
-python main.py preprocessing
+python mt_main.py preprocessing
 '''
+print "USAGE: "
+print usage
+print ""
+########################
 
 def main():
 	
@@ -49,12 +53,13 @@ def main():
 	for key,value in params.items():
 		print " -- ",key," = ",value
 	buckets = {  0:{'max_input_seq_length':params['max_input_seq_length'], 'max_output_seq_length':params['max_output_seq_length']} }
-	print "buckets = ",buckets
+	#print "buckets = ",buckets
 	
 	# train
 	mode=sys.argv[1]
 	print "mode = ",mode
 
+	########### PREPROCESSING
 	if mode=="preprocessing":
 		# preprocessing
 		print "------------------------------------------------------------------------"
@@ -68,8 +73,8 @@ def main():
 		data = { split:preprocessing.prepareMTData(cur_data) for split,cur_data in data_seq.items()  }
 		for split,split_data in data.items():
 			print "Split: ",split
-			inp,dinp,dout = split_data
-			print inp.shape, dinp.shape, dout.shape
+			inp,dinp,dout,dout_inp_matches = split_data
+			print inp.shape, dinp.shape, dout.shape, dout_inp_matches.shape
 		print "------------------------------------------------------------------------"
 		print "------------------------------------------------------------------------"
 		print ""
@@ -81,25 +86,27 @@ def main():
 		preprocessing = pickle.load(open("./tmp/preprocessing.obj","r") )
 
 	params['vocab_size'] = preprocessing.vocab_size
-
 	train = data['train']
 	val = data['valid']
 	test = data['test']
+
+	# DEBUG
 	if mode=="debug":
 		lim = 64
 	else:
 		lim=params['batch_size'] * ( len(train[0])/params['batch_size'] )
 	if lim!=-1:
-		train_encoder_inputs, train_decoder_inputs, train_decoder_outputs = train
+		train_encoder_inputs, train_decoder_inputs, train_decoder_outputs, train_decoder_outputs_matching_inputs = train
 		train_encoder_inputs = train_encoder_inputs[:lim]
 		train_decoder_inputs = train_decoder_inputs[:lim]
 		train_decoder_outputs = train_decoder_outputs[:lim]
-		train = train_encoder_inputs, train_decoder_inputs, train_decoder_outputs
+		train_decoder_outputs_matching_inputs = train_decoder_outputs_matching_inputs[:lim]
+		train = train_encoder_inputs, train_decoder_inputs, train_decoder_outputs, train_decoder_outputs_matching_inputs
 		
+	#Pretrained embeddibngs
 	if params['pretrained_embeddings']:
 		pretrained_embeddings = pickle.load(open(params['pretrained_embeddings_path'],"r"))
 		word_to_idx = preprocessing.word_to_idx
-
 		encoder_embedding_matrix = np.random.rand( params['vocab_size'], params['embeddings_dim'] )
 		decoder_embedding_matrix = np.random.rand( params['vocab_size'], params['embeddings_dim'] )
 		not_found_count = 0
@@ -134,6 +141,7 @@ def main():
 			print "New vocab size = ",params['vocab_size']
 
 
+	# TRAIN/DEBUG
 	if mode=='train' or mode=="debug":
 		if mode=="train":
 			training_iters = int(sys.argv[2])
@@ -151,67 +159,37 @@ def main():
 		_ = rnn_model.getModel(params, mode='train',reuse=False, buckets=buckets)
 		rnn_model.trainModel(config=params, train_feed_dict=train_buckets, val_feed_dct=val, reverse_vocab=preprocessing.idx_to_word, do_init=True)
 	
-	else:
+	# INFERENCE
+	elif mode=="inference":
 		saved_model_path = sys.argv[2]
-		val_encoder_inputs, val_decoder_inputs, val_decoder_outputs = val
-		print "val_encoder_inputs = ",val_encoder_inputs
-
-		if len(val_decoder_outputs.shape)==3:
-			val_decoder_outputs=np.reshape(val_decoder_outputs, (val_decoder_outputs.shape[0], val_decoder_outputs.shape[1]))
-
 		params['saved_model_path'] = saved_model_path
 		rnn_model = solver.Solver(params, buckets=None, mode='inference')
 		_ = rnn_model.getModel(params, mode='inference', reuse=False, buckets=None)
 		print "----Running inference-----"
-		decoder_outputs_inference, decoder_ground_truth_outputs = rnn_model.solveAll(params, val_encoder_inputs, val_decoder_outputs, preprocessing.idx_to_word)
-                			   
-		validOutFile=open(saved_model_path+".valid.output","w")
-		for outputLine,groundLine in zip(decoder_outputs_inference,decoder_ground_truth_outputs):
-			print outputLine
-			outputLine=preprocessing.fromIdxSeqToVocabSeq(outputLine)
-			if "sentend" in outputLine:
-				outputLine=outputLine[:outputLine.index("sentend")]
-			print outputLine
-			print preprocessing.fromIdxSeqToVocabSeq(groundLine)
-			outputLine=" ".join(outputLine)+"\n"
-			validOutFile.write(outputLine)
-		validOutFile.close()
 		
-		import os
-		#os.system("./multi-bleu.perl -lc ../data/valid.original.nltktok < "+saved_model_path+".valid.output")
-		BLEUOutput=os.popen("perl multi-bleu.perl -lc ../data/valid.original.nltktok < "+saved_model_path+".valid.output").read()
-		BLEUOutputFile=open(saved_model_path+".valid.BLEU","w")
-		BLEUOutputFile.write(BLEUOutput)
-		BLEUOutputFile.close()
+		#val
+		val_encoder_inputs, val_decoder_inputs, val_decoder_outputs, val_decoder_outputs_matching_inputs = val
+		#print "val_encoder_inputs = ",val_encoder_inputs
+		if len(val_decoder_outputs.shape)==3:
+			val_decoder_outputs=np.reshape(val_decoder_outputs, (val_decoder_outputs.shape[0], val_decoder_outputs.shape[1]))
+		decoder_outputs_inference, decoder_ground_truth_outputs = rnn_model.solveAll(params, val_encoder_inputs, val_decoder_outputs, preprocessing.idx_to_word)        			   
+		validOutFile_name = saved_model_path+".valid.output"
+		original_data_path = "../data/valid.original.nltktok"
+		BLEUOutputFile_path = saved_model_path + ".valid.BLEU"
+		utilities.getBlue(validOutFile_name, original_data_path, BLEUOutputFile_path, decoder_outputs_inference, decoder_ground_truth_outputs, preprocessing)
 
-		test_encoder_inputs, test_decoder_inputs, test_decoder_outputs = test
-		#print "test_encoder_inputs = ",test_encoder_inputs
-
+		#test
+		test_encoder_inputs, test_decoder_inputs, test_decoder_outputs, test_decoder_outputs_matching_inputs = test
 		if len(test_decoder_outputs.shape)==3:
 			test_decoder_outputs=np.reshape(test_decoder_outputs, (test_decoder_outputs.shape[0], test_decoder_outputs.shape[1]))
-
-
 		decoder_outputs_inference, decoder_ground_truth_outputs = rnn_model.solveAll(params, test_encoder_inputs, test_decoder_outputs, preprocessing.idx_to_word)
-                			   
-		testOutFile=open(saved_model_path+".test.output","w")
-		for outputLine,groundLine in zip(decoder_outputs_inference,decoder_ground_truth_outputs):
-			print outputLine
-			outputLine=preprocessing.fromIdxSeqToVocabSeq(outputLine)
-			if "sentend" in outputLine:
-				outputLine=outputLine[:outputLine.index("sentend")]
-			print outputLine
-			print preprocessing.fromIdxSeqToVocabSeq(groundLine)
-			outputLine=" ".join(outputLine)+"\n"
-			testOutFile.write(outputLine)
-		testOutFile.close()
-		
-		import os
-		#os.system("./multi-bleu.perl -lc ../data/valid.original.nltktok < "+saved_model_path+".valid.output")
-		BLEUOutput=os.popen("perl multi-bleu.perl -lc ../data/test.original.nltktok < "+saved_model_path+".test.output").read()
-		BLEUOutputFile=open(saved_model_path+".test.BLEU","w")
-		BLEUOutputFile.write(BLEUOutput)
-		BLEUOutputFile.close()
+		validOutFile_name = saved_model_path+".test.output"
+		original_data_path = "../data/test.original.nltktok"
+		BLEUOutputFile_path = saved_model_path + ".test.BLEU"
+		utilities.getBlue(validOutFile_name, original_data_path, BLEUOutputFile_path, decoder_outputs_inference, decoder_ground_truth_outputs, preprocessing)
 
+	else:
+		print "Please see usage"
 
 
 if __name__ == "__main__":

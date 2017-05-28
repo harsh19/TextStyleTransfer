@@ -106,7 +106,7 @@ class Solver:
 
 
 		for bucket_num,bucket in enumerate(self.buckets):
-			encoder_inputs, decoder_inputs, decoder_outputs = train_feed_dict[bucket_num]
+			encoder_inputs, decoder_inputs, decoder_outputs, decoder_outputs_matching_inputs = train_feed_dict[bucket_num]
 			#cost = self.model_obj.cost
 
 			# if y is passed as (N, seq_length, 1): change it to (N,seq_length)
@@ -162,9 +162,11 @@ class Solver:
 
 				if step % display_step == 0:
 					#loss = sess.run(cost, feed_dict= feed_dict_cur)
-					encoder_input_sequences, decoder_input_sequences, decoder_output_sequences = val_feed_dct
+					encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, decoder_outputs_matching_inputs = val_feed_dct
 					loss = self.getLoss( config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, token_lookup_sequences_placeholder, token_lookup_sequences_decoder_placeholder, token_output_sequences_decoder_placeholder, masker, cost, sess)
-					print "step ",step," : ",loss
+					bleu = self.getBleuOnVal( config, reverse_vocab, val_feed_dct, sess)
+					print "step ",step," : loss = ",loss
+					print "step ",step," : bleu = ",bleu
 				if step % sample_step == 0:
   					self.runInference( config, encoder_inputs[:batch_size], decoder_outputs[:batch_size], reverse_vocab, sess )
 				if step%save_step==0:
@@ -198,7 +200,8 @@ class Solver:
 	###################################################################################
 
 	def runInference(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None, print_all=True): # sampling
-		print " INFERENCE STEP ...... ============================================================"
+		if print_all:
+			print " INFERENCE STEP ...... ============================================================"
 		if sess==None:
 	  		sess = tf.Session()
 	  		saver = tf.train.Saver()
@@ -231,7 +234,7 @@ class Solver:
 
 	###################################################################################
 
-	def solveAll(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None): # sampling
+	def solveAll(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None, print_progress=True): # sampling
 		print " SolveAll ...... ============================================================"
 		batch_size = config['batch_size']
 		num_batches = ( len(encoder_inputs) + batch_size - 1)/ batch_size 
@@ -240,7 +243,8 @@ class Solver:
 		print "len(encoder_inputs) = ",len(encoder_inputs)
 		decoder_outputs_inference = []
 		for i in range(num_batches):
-			print "i= ",i
+			if print_progress:
+				print "i= ",i
 			encoder_inputs_cur = encoder_inputs[i*batch_size:(i+1)*batch_size]
 			decoder_gt_outputs_cur = decoder_ground_truth_outputs[i*batch_size:(i+1)*batch_size]
 			lim = len(encoder_inputs_cur)
@@ -257,7 +261,6 @@ class Solver:
 		print decoder_outputs_inference[0], decoder_ground_truth_outputs[0]
 		return decoder_outputs_inference, decoder_ground_truth_outputs
 		#print utils.getScores(decoder_outputs_inference, decoder_ground_truth_outputs)
-
 
 	###################################################################################
 
@@ -289,6 +292,14 @@ class Solver:
 		#print "LOSS = ", np.mean(loss)
 		return np.mean(loss)
 
+	def getBleuOnVal(self, params, reverse_vocab, val_feed, sess):
+		val_encoder_inputs, val_decoder_inputs, val_decoder_outputs, val_decoder_outputs_matching_inputs = val_feed
+		decoder_outputs_inference, decoder_ground_truth_outputs = self.solveAll(params, val_encoder_inputs, val_decoder_outputs, reverse_vocab, sess=sess, print_progress=False)        			   
+		validOutFile_name = saved_model_path+".valid.output"
+		original_data_path = "../data/valid.original.nltktok"
+		BLEUOutputFile_path = saved_model_path + ".valid.BLEU"
+		utilities.getBlue(validOutFile_name, original_data_path, BLEUOutputFile_path, decoder_outputs_inference, decoder_ground_truth_outputs, preprocessing)
+		return open(BLEUOutputFile_path,"r").read()
 
 ########################################################################################
 
