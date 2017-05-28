@@ -170,6 +170,27 @@ class Solver:
 				if step%save_step==0:
 					save_path = saver.save(sess, "./tmp/" + model_name + str(step) + ".ckpt")
 	  				print "Model saved in file: ",save_path
+                                        val_encoder_inputs,val_decoder_inputs,val_decoder_outputs=val_feed_dct
+                                        if len(val_decoder_outputs)==3:
+                                            val_decoder_outputs=np.reshape(val_decoder_outputs,(val_decoder_outputs.shape[0],val_decoder_outputs.shape[1]))
+                                        decoder_outputs_inference,decoder_ground_truth_outputs=self.solveAll(config,val_encoder_inputs,val_decoder_outputs,reverse_vocab,sess)
+                                        
+                                        validOutFile=open("bufferFile","w")
+                                        for outputLine in decoder_outputs_inference:
+                                            outputLine=[reverse_vocab[x] for x in outputLine]
+                                            if "sentend" in outputLine:
+                                                outputLine=outputLine[:outputLine.index("sentend")]
+                                            #print outputLine
+                                            outputLine=" ".join(outputLine)+"\n"
+                                            validOutFile.write(outputLine)
+                                        
+                                        validOutFile.close()
+
+                                        import os
+                                        BLEUOutput=os.popen("perl multi-bleu.perl -lc ../data/valid.original.nltktok < "+"bufferFile").read()
+                                        print BLEUOutput
+
+
 				step += 1
 
 		self.saver = saver
@@ -229,7 +250,7 @@ class Solver:
 					encoder_inputs_cur = np.vstack( (encoder_inputs_cur,encoder_inputs[0]) )
 					decoder_gt_outputs_cur = np.vstack( (decoder_gt_outputs_cur,decoder_ground_truth_outputs[0]) )
 					#decoder_gt_outputs_cur.extend(decoder_ground_truth_outputs[0]*gap)
-			decoder_outputs_inference_cur = self.runInference(config, encoder_inputs_cur, decoder_gt_outputs_cur, reverse_vocab, sess=None, print_all=False)
+			decoder_outputs_inference_cur = self.runInference(config, encoder_inputs_cur, decoder_gt_outputs_cur, reverse_vocab, sess=sess, print_all=False)
 			decoder_outputs_inference.extend( decoder_outputs_inference_cur[:lim] )
 		print len(encoder_inputs)
 		print len(decoder_outputs_inference)
