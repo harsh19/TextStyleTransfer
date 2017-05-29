@@ -248,6 +248,7 @@ class Solver:
 		num_batches = ( len(encoder_input_sequences) + batch_size - 1)/ batch_size 
 		loss = []
 		sentinel_loss = []
+		all_vals=[]
 		for i in range(num_batches):
 			#print "i= ",i
 			cur_input_sequences = encoder_input_sequences[i*batch_size:(i+1)*batch_size]
@@ -268,12 +269,23 @@ class Solver:
 			mask[x,y]=1
 			feed_dct[mask_placeholder]=mask
 			cur_loss = sess.run(loss_variable, feed_dct)
+			vals = sess.run(self.model_obj.vals, feed_dct)
+			all_vals.append(vals)
 			loss.append( cur_loss )
 			cur_loss = sess.run(sentinel_loss_variable, feed_dct)
 			sentinel_loss.append( cur_loss )
+			break
 		loss = np.array(loss)
 		sentinel_loss = np.array(sentinel_loss)
 		print "s3ntinel loss = ", np.mean(sentinel_loss)
+		vals = all_vals[0]
+		for val in vals: # val-> at a time step
+			cur_sentinel_attention_loss,sentinel_weight = val[0], val[1]
+			print "cur_sentinel_attention_loss = ",cur_sentinel_attention_loss
+			print "sentinel_weight = ",sentinel_weight
+			print ""
+			break
+		
 		return np.mean(loss)
 
 	def getBleuOnVal(self, params, reverse_vocab, val_feed, sess, model_name):

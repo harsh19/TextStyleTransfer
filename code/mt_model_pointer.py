@@ -278,11 +278,13 @@ class RNNModel:
 
 		#unrolled lstm 
 		outputs = [] # h values at each time step
+		vals = []
 		state = decoder_initial_state
 		cell_output = state[1]
 		encoder_outputs = tf.stack(encoder_outputs) # timesteps, N, cellsize
 		encoder_outputs = tf.transpose(encoder_outputs,[1,0,2]) # N, timesteps, cellsize 
 		sentinel = tf.ones([batch_size,lstm_cell_size], dtype=tf.float32)
+		eps = tf.constant(0.000000001, dtype=tf.float32)
 		with tf.variable_scope("RNN"):
 			if mode=='training':
 				decoder_output_inpmatch_sequence = params['decoder_output_inpmatch_sequence']
@@ -295,16 +297,17 @@ class RNNModel:
 					pred.append(cur_pred)
 
 					cur_decoder_output_inpmatch_sequence = decoder_output_inpmatch_sequence[:, time_step, :] # N,inp_seq_length 
-					print "cur_decoder_output_inpmatch_sequence = ",cur_decoder_output_inpmatch_sequence
 					# alpha: N, inp_seq_length
-					cur_sentinel_attention_loss = tf.reduce_sum( alpha * cur_decoder_output_inpmatch_sequence ) # N
+					cur_sentinel_attention_loss = tf.reduce_sum( alpha * cur_decoder_output_inpmatch_sequence, axis=1 ) # N
 					if time_step == 0:
-						sentinel_loss =  tf.reduce_sum( tf.log(sentinel_weight+ cur_sentinel_attention_loss) ) # N -> 1
+						sentinel_loss =  -tf.reduce_sum( tf.log(eps + sentinel_weight+ cur_sentinel_attention_loss) ) # N -> 1
 					else:
-						sentinel_loss = sentinel_loss + (tf.reduce_sum( tf.log(sentinel_weight+ cur_sentinel_attention_loss) )) # N -> 1
-				
+						sentinel_loss = sentinel_loss + (-tf.reduce_sum( tf.log(sentinel_weight+ cur_sentinel_attention_loss) )) # N -> 1
+					#vals.append([cur_sentinel_attention_loss,sentinel_weight])
+
 				pred = tf.stack(pred), sentinel_loss
 				tf.get_variable_scope().reuse_variables()
+				#self.vals = vals
 
 			elif mode=='inference':
 
