@@ -78,12 +78,12 @@ def main():
 		print "------------------------------------------------------------------------"
 		print "------------------------------------------------------------------------"
 		print ""
-		pickle.dump(data,open("./tmp/data.obj","w"))
-		pickle.dump(preprocessing, open("./tmp/preprocessing.obj","w") )
+		pickle.dump(data,open("../data/data.obj","w"))
+		pickle.dump(preprocessing, open("../data/preprocessing.obj","w") )
 		return
 	else:
-		data = pickle.load(open("./tmp/data.obj","r") )
-		preprocessing = pickle.load(open("./tmp/preprocessing.obj","r") )
+		data = pickle.load(open("../data/data.obj","r") )
+		preprocessing = pickle.load(open("../data/preprocessing.obj","r") )
 
 	params['vocab_size'] = preprocessing.vocab_size
 	params['preprocessing'] = preprocessing
