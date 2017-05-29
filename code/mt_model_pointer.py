@@ -410,7 +410,7 @@ class RNNModel:
 					sentinel_loss = tf.divide(sentinel_loss, masker_sum) # N
 					self.sentinel_loss = sentinel_loss 
 					if params['use_sentinel_loss']:
-						self.cost = cost + sentinel_loss
+						self.cost = cost + params['lambd'] * sentinel_loss
 					else:
 						self.cost = cost
 

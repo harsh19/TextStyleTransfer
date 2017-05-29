@@ -49,6 +49,7 @@ def main():
 	params['do_vocab_pruning'] = config.do_vocab_pruning
 	params['use_reverse_encoder'] = config.use_reverse_encoder
 	params['use_sentinel_loss'] =config.use_sentinel_loss
+	params['lambd'] = config.lambd
 
 	print "PARAMS:"
 	for key,value in params.items():
