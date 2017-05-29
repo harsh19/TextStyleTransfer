@@ -130,13 +130,13 @@ class RNNModel:
 
 			# sentinel : N, lstm_cell_size
 			sentinel_expanded = tf.expand_dims(sentinel,1)  # N, 1, lstm_cell_size
-			encoder_vals = tf.concat([sentinel_expanded, encoder_vals], axis=1) # N, encoder_sequence_length+1, lstm_cell_size
+			encoder_vals_expanded = tf.concat([sentinel_expanded, encoder_vals], axis=1) # N, encoder_sequence_length+1, lstm_cell_size
 
 			watt = tf.get_variable('watt', [cell_size, cell_size] )
 			batt = tf.get_variable('batt', [1, cell_size] )
 			query = tf.tanh( tf.matmul(h_prev, watt) + batt ) # . this is "query"
 			h_att = tf.expand_dims( query , 1)	# (N,1,cell_size)  
-			out_att = tf.reduce_sum( tf.multiply( h_att, encoder_vals ), axis=2 ) # (N, encoder_sequence_length+1)
+			out_att = tf.reduce_sum( tf.multiply( h_att, encoder_vals_expanded ), axis=2 ) # (N, encoder_sequence_length+1)
 			alpha = tf.nn.softmax(out_att)  # (N, encoder_sequence_length+1)
 			sentinel_weight = alpha[:,0]
 			alpha = alpha[:,1:]
