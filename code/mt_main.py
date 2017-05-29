@@ -52,6 +52,7 @@ def main():
 	params['use_reverse_encoder'] = config.use_reverse_encoder
 	params['use_sentinel_loss'] =config.use_sentinel_loss
 	params['lambd'] = config.lambd
+	params['use_context_for_out'] = config.use_context_for_out
 
 	print "PARAMS:"
 	for key,value in params.items():
