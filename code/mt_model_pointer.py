@@ -299,9 +299,9 @@ class RNNModel:
 					# alpha: N, inp_seq_length
 					cur_sentinel_attention_loss = tf.reduce_sum( alpha * cur_decoder_output_inpmatch_sequence ) # N
 					if time_step == 0:
-						sentinel_loss = - tf.reduce_sum( tf.log(sentinel_weight+ cur_sentinel_attention_loss) ) # N -> 1
+						sentinel_loss =  tf.reduce_sum( tf.log(sentinel_weight+ cur_sentinel_attention_loss) ) # N -> 1
 					else:
-						sentinel_loss = sentinel_loss + (- tf.reduce_sum( tf.log(sentinel_weight+ cur_sentinel_attention_loss) )) # N -> 1
+						sentinel_loss = sentinel_loss + (tf.reduce_sum( tf.log(sentinel_weight+ cur_sentinel_attention_loss) )) # N -> 1
 				
 				pred = tf.stack(pred), sentinel_loss
 				tf.get_variable_scope().reuse_variables()
@@ -400,6 +400,7 @@ class RNNModel:
 					masker_sum = tf.reduce_sum(masker) # N
 					cost = tf.divide(cost, masker_sum) # N
 					sentinel_loss = tf.divide(sentinel_loss, masker_sum) # N
+					self.sentinel_loss = sentinel_loss 
 					self.cost = cost + sentinel_loss
 
 			return pred #[ tf.nn.softmax(vals) for vals in pred]

@@ -13,7 +13,7 @@ share_encoder_decoder_embeddings=True
 use_pointer=True
 use_pretrained_embeddings = True
 pretrained_embeddings_path = "../data/noConstraints_128.p"
-pretrained_embeddings_are_trainable = False  
+pretrained_embeddings_are_trainable = True  
 use_additional_info_from_pretrained_embeddings = True # if some word is not in training data set but is there in pretrained embeddings: mark True to add such words also. Otherwise mark False
 
 display_step=1

@@ -36,6 +36,7 @@ class Solver:
 		self.preds = []
 		self.encoder_outputs_list = []
 		self.cost_list = []
+		self.sentinel_cost_list = []
 		self.optimizer_list = []
 
 		optimizer_typ =  "adam" #"sgd" #"adam"
@@ -57,6 +58,7 @@ class Solver:
 				self.preds.append(pred)
 				self.encoder_outputs_list.append(encoder_outputs)
 				self.cost_list.append( self.model_obj.cost )
+				self.sentinel_cost_list.append( self.model_obj.sentinel_loss )
 				cost = self.model_obj.cost 
 				if self.optimizer_typ=="sgd":
 					optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
@@ -121,6 +123,7 @@ class Solver:
 			pred = self.preds[bucket_num]
 			masker = self.mask_list[bucket_num]
 			cost = self.cost_list[bucket_num]
+			sentinel_cost = self.sentinel_cost_list[bucket_num]
 
 			# Gradient descent
 			#learning_rate=0.1
@@ -159,7 +162,7 @@ class Solver:
 				if step % display_step == 0:
 					#loss = sess.run(cost, feed_dict= feed_dict_cur)
 					encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, decoder_outputs_matching_inputs = val_feed_dct
-					loss = self.getLoss( config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, token_lookup_sequences_placeholder, token_lookup_sequences_decoder_placeholder, token_output_sequences_decoder_placeholder, masker, token_output_sequences_decoder_inpmatch_placeholder, decoder_outputs_matching_inputs, cost, sess)
+					loss = self.getLoss( config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, token_lookup_sequences_placeholder, token_lookup_sequences_decoder_placeholder, token_output_sequences_decoder_placeholder, masker, token_output_sequences_decoder_inpmatch_placeholder, decoder_outputs_matching_inputs, cost, sentinel_cost, sess)
 					print "step ",step," : loss = ",loss
 					bleu = self.getBleuOnVal( config, reverse_vocab, val_feed_dct, sess, model_name)
 					print "step ",step," : bleu = ",bleu
@@ -239,11 +242,12 @@ class Solver:
 
 	###################################################################################
 
-	def getLoss(self, config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, enc_inp_placeholder, dec_in_placeholder, dec_out_placeholder, mask_placeholder, token_output_sequences_decoder_inpmatch_placeholder, decoder_outputs_matching_inputs, loss_variable, sess): # Probabilities
+	def getLoss(self, config, encoder_input_sequences, decoder_input_sequences, decoder_output_sequences, enc_inp_placeholder, dec_in_placeholder, dec_out_placeholder, mask_placeholder, token_output_sequences_decoder_inpmatch_placeholder, decoder_outputs_matching_inputs, loss_variable, sentinel_loss_variable, sess): # Probabilities
 		print " getLoss ...... ============================================================"
 		batch_size = config['batch_size']
 		num_batches = ( len(encoder_input_sequences) + batch_size - 1)/ batch_size 
 		loss = []
+		sentinel_loss = []
 		for i in range(num_batches):
 			#print "i= ",i
 			cur_input_sequences = encoder_input_sequences[i*batch_size:(i+1)*batch_size]
@@ -265,8 +269,11 @@ class Solver:
 			feed_dct[mask_placeholder]=mask
 			cur_loss = sess.run(loss_variable, feed_dct)
 			loss.append( cur_loss )
+			cur_loss = sess.run(sentinel_loss_variable, feed_dct)
+			sentinel_loss.append( cur_loss )
 		loss = np.array(loss)
-		#print "LOSS = ", np.mean(loss)
+		sentinel_loss = np.array(sentinel_loss)
+		print "s3ntinel loss = ", np.mean(sentinel_loss)
 		return np.mean(loss)
 
 	def getBleuOnVal(self, params, reverse_vocab, val_feed, sess, model_name):
