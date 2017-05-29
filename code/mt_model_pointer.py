@@ -114,7 +114,7 @@ class RNNModel:
 	########################################################################
 	# DECODER MODEL...
 
-	def attentionLayer(self, encoder_vals, h_prev, sentinel, reuse=False): ## pointer network layer
+	def attentionLayer(self, encoder_vals, h_prev, sentinel=None, reuse=False): ## pointer network layer
 		#print "reuse = ",reuse
 		lstm_cell_size = h_prev.get_shape().as_list()[-1]
 		with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
@@ -129,6 +129,10 @@ class RNNModel:
 			## encoder_vals = tf.reshape(encoder_vals, [-1,shap[1],lstm_cell_size]) # N, encoder_sequence_length, lstm_cell_size
 
 			# sentinel : N, lstm_cell_size
+			sentinel = tf.get_variable('sentinel_vector',[lstm_cell_size])
+			sentinel = tf.expand_dims(sentinel,0)  # 1, lstm_cell_size
+			sentinel = tf.tile( sentinel, [shap[0],1] )
+			#print "sentinel = ",sentinel
 			sentinel_expanded = tf.expand_dims(sentinel,1)  # N, 1, lstm_cell_size
 			encoder_vals_expanded = tf.concat([sentinel_expanded, encoder_vals], axis=1) # N, encoder_sequence_length+1, lstm_cell_size
 
@@ -284,7 +288,7 @@ class RNNModel:
 		cell_output = state[1]
 		encoder_outputs = tf.stack(encoder_outputs) # timesteps, N, cellsize
 		encoder_outputs = tf.transpose(encoder_outputs,[1,0,2]) # N, timesteps, cellsize 
-		sentinel = tf.ones([batch_size,lstm_cell_size], dtype=tf.float32)
+		sentinel = None #tf.ones([batch_size,lstm_cell_size], dtype=tf.float32) # Not used
 		eps = tf.constant(0.000000001, dtype=tf.float32)
 		with tf.variable_scope("RNN"):
 			if mode=='training':
