@@ -10,13 +10,14 @@ max_vocab_size = 12000
 
 use_reverse_encoder=True
 share_encoder_decoder_embeddings=True
-use_pointer=True
+use_pointer=False
 use_pretrained_embeddings = True
 pretrained_embeddings_path = "../data/noConstraints_128.p"
 pretrained_embeddings_are_trainable = False  
 use_additional_info_from_pretrained_embeddings = True # if some word is not in training data set but is there in pretrained embeddings: mark True to add such words also. Otherwise mark False
 use_sentinel_loss = True
 lambd = 2.0
+use_context_for_out = True
 
 display_step=1
 sample_step=2

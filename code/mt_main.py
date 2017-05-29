@@ -1,18 +1,20 @@
-from keras.datasets import mnist
-import matplotlib.pyplot as plt
-from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
-from keras.utils import np_utils
+
+import tensorflow as tf
+# Set seed for reproducability
+tf.set_random_seed(1)
 import numpy as np
-import csv
+np.random.seed(1)
+
+from keras.datasets import mnist
+from keras.preprocessing.sequence import pad_sequences
 import configuration as config
-from sklearn.preprocessing import LabelEncoder
-import mt_model as models
 import pickle
+import sys
+
+import mt_model as models
 import utilities as datasets
 import utilities
 import mt_solver as solver
-import sys
 from prepro import PreProcessing
 
 ########################

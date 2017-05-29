@@ -58,7 +58,8 @@ class Solver:
 				self.preds.append(pred)
 				self.encoder_outputs_list.append(encoder_outputs)
 				self.cost_list.append( self.model_obj.cost )
-				self.sentinel_cost_list.append( self.model_obj.sentinel_loss )
+				if config['use_pointer']:
+					self.sentinel_cost_list.append( self.model_obj.sentinel_loss )
 				cost = self.model_obj.cost 
 				if self.optimizer_typ=="sgd":
 					optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
@@ -79,7 +80,8 @@ class Solver:
 			self.token_lookup_sequences_decoder_placeholder_list = self.model_obj.token_lookup_sequences_decoder_placeholder_list
 			self.token_output_sequences_decoder_placeholder_list = self.model_obj.token_output_sequences_decoder_placeholder_list
 			self.mask_list = self.model_obj.masker_list
-			self.token_output_sequences_decoder_inpmatch_placeholder_list = self.model_obj.token_output_sequences_decoder_inpmatch_placeholder_list
+			if config['use_pointer']:
+				self.token_output_sequences_decoder_inpmatch_placeholder_list = self.model_obj.token_output_sequences_decoder_inpmatch_placeholder_list
 		else:
 			encoder_outputs = self.model_obj.getEncoderModel(config, mode='inference', reuse=reuse)
 			self.decoder_outputs_inference, self.encoder_outputs = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, 	mode='inference', reuse=False)	
@@ -114,8 +116,13 @@ class Solver:
 			token_lookup_sequences_placeholder = self.token_lookup_sequences_placeholder_list[bucket_num]
 			token_output_sequences_decoder_placeholder = self.token_output_sequences_decoder_placeholder_list[bucket_num]
 			token_lookup_sequences_decoder_placeholder = self.token_lookup_sequences_decoder_placeholder_list[bucket_num]
-			token_output_sequences_decoder_inpmatch_placeholder = self.token_output_sequences_decoder_inpmatch_placeholder_list[bucket_num]
-			feed_dct={token_lookup_sequences_placeholder:encoder_inputs, token_output_sequences_decoder_placeholder:decoder_outputs, token_lookup_sequences_decoder_placeholder:decoder_inputs, token_output_sequences_decoder_inpmatch_placeholder:decoder_outputs_inpmatch}
+			if config['use_pointer']:
+				token_output_sequences_decoder_inpmatch_placeholder = self.token_output_sequences_decoder_inpmatch_placeholder_list[bucket_num]
+			else:
+				token_output_sequences_decoder_inpmatch_placeholder = None
+			feed_dct={token_lookup_sequences_placeholder:encoder_inputs, token_output_sequences_decoder_placeholder:decoder_outputs, token_lookup_sequences_decoder_placeholder:decoder_inputs} 
+			if config['use_pointer']:
+				feed_dct[token_output_sequences_decoder_inpmatch_placeholder] = decoder_outputs_inpmatch
 
 			#print "token_lookup_sequences_placeholder,  = ",token_lookup_sequences_placeholder, "\n token_output_sequences_decoder_placeholder = ",token_output_sequences_decoder_placeholder,"token_lookup_sequences_decoder_placeholder=",token_lookup_sequences_decoder_placeholder
 			#print "\n encoder_inputs = ",encoder_inputs.shape, "\ndecoder_outputs =  ",decoder_outputs.shape, "\n decoder_inputs =  ", decoder_inputs.shape
@@ -123,7 +130,10 @@ class Solver:
 			pred = self.preds[bucket_num]
 			masker = self.mask_list[bucket_num]
 			cost = self.cost_list[bucket_num]
-			sentinel_cost = self.sentinel_cost_list[bucket_num]
+			if config['use_pointer']:
+				sentinel_cost = self.sentinel_cost_list[bucket_num]
+			else:
+				sentinel_cost = None
 
 			# Gradient descent
 			#learning_rate=0.1
@@ -263,7 +273,9 @@ class Solver:
 					cur_decoder_input_sequences = np.vstack( (cur_decoder_input_sequences, cur_decoder_input_sequences[0]) )
 					cur_input_sequences = np.vstack( (cur_input_sequences, cur_input_sequences[0]) )
 					cur_decoder_outputs_matching_inputs = np.concatenate( (cur_decoder_outputs_matching_inputs, np.array([cur_decoder_outputs_matching_inputs[0]]) ) )
-			feed_dct = {enc_inp_placeholder:cur_input_sequences, dec_out_placeholder:cur_decoder_output_sequences, dec_in_placeholder:cur_decoder_input_sequences, token_output_sequences_decoder_inpmatch_placeholder:cur_decoder_outputs_matching_inputs}
+			feed_dct = {enc_inp_placeholder:cur_input_sequences, dec_out_placeholder:cur_decoder_output_sequences, dec_in_placeholder:cur_decoder_input_sequences}
+			if config['use_pointer']:
+				feed_dct[token_output_sequences_decoder_inpmatch_placeholder] = cur_decoder_outputs_matching_inputs
 			mask = np.zeros(cur_decoder_output_sequences.shape, dtype=np.float)
 			x,y = np.nonzero(cur_decoder_output_sequences)
 			mask[x,y]=1
@@ -272,12 +284,13 @@ class Solver:
 			#vals = sess.run(self.model_obj.vals, feed_dct)
 			#all_vals.append(vals)
 			loss.append( cur_loss )
-			cur_loss = sess.run(sentinel_loss_variable, feed_dct)
-			sentinel_loss.append( cur_loss )
+			## cur_loss = sess.run(sentinel_loss_variable, feed_dct)
+			## sentinel_loss.append( cur_loss )
 			#break
 		loss = np.array(loss)
-		sentinel_loss = np.array(sentinel_loss)
-		print "s3ntinel loss = ", np.mean(sentinel_loss)
+		## sentinel_loss = np.array(sentinel_loss)
+		## print "s3ntinel loss = ", np.mean(sentinel_loss)
+		
 		'''vals = all_vals[0]
 		for val in vals: # val-> at a time step
 			cur_sentinel_attention_loss,sentinel_weight = val[0], val[1]

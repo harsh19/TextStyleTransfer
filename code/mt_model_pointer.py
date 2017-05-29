@@ -12,6 +12,7 @@ import tensorflow as tf
 from tensorflow.contrib import rnn
 from utilities import OutputSentence, TopN
 import utilities
+import configuration as config
 	
 
 class RNNModel:
@@ -160,26 +161,35 @@ class RNNModel:
 		alpha, sentinel_weight, context = self.attentionLayer(encoder_outputs, prev_cell_output, sentinel, reuse) # alpha is (None, encoder_sequence_length)
 		#inputs =  cur_inputs 
 		inputs = tf.concat([ cur_inputs, context ], axis=1)
-		return lstm_cell(inputs, state=state), alpha, sentinel_weight
+		return lstm_cell(inputs, state=state), alpha, sentinel_weight, context
 
 
 	def initDecoderOutputVariables(self,lstm_cell_size, token_vocab_size):
 		with tf.variable_scope('decoder_output', reuse=None) as scope:
 			w_out = tf.get_variable('w_out', shape=[lstm_cell_size, token_vocab_size], initializer=tf.random_normal_initializer(-1.0,1.0))
-			w_out = tf.get_variable('b_out', shape=[token_vocab_size]) # , initializer=tf.random_normal())
+			b_out = tf.get_variable('b_out', shape=[token_vocab_size]) # , initializer=tf.random_normal())
+			w_context_out = tf.get_variable('w_context_out', shape=[lstm_cell_size, token_vocab_size], initializer=tf.random_normal_initializer(-1.0,1.0))
+			b_context_out = tf.get_variable('b_context_out', initializer=tf.random_normal([token_vocab_size]) )
 			scope.reuse_variables()
 	def getDecoderOutputVariables(self):
 		with tf.variable_scope('decoder_output', reuse=True) as scope:
 			w_out = tf.get_variable('w_out')
 			b_out = tf.get_variable('b_out')
-			return w_out, b_out
+			w_context_out = tf.get_variable('w_context_out')
+			b_context_out = tf.get_variable('b_context_out')
+			return w_out, b_out, w_context_out, b_context_out
 	
-	def getDecoderOutput(self, output, lstm_cell_size, token_vocab_size, w_out, b_out, alpha_sentinel, encoder_input_sequence, batch_size, vocab_size ): 
+	def getDecoderOutput(self, output, lstm_cell_size, token_vocab_size, out_weights, alpha_sentinel, encoder_input_sequence, batch_size, vocab_size, context, use_context_for_out=config.use_context_for_out): 
 		# outputs_list: list of tensor(batch_size, cell_size) with time_steps number of items
 		
+		#print "out_weights = ",out_weights
+		w_out, b_out, w_context_out, b_context_out = out_weights
 		alpha, sentinel_weight = alpha_sentinel  #sentinel_weight: N,
 		
 		pred =  tf.matmul(output, w_out) + b_out  #(N,vocab_size)
+		if use_context_for_out:
+			pred += (tf.matmul(context, w_context_out) + b_context_out)  #(N,vocab_size)
+
 		pred_softmax = tf.nn.softmax(pred)
 		sentinel_weight = tf.expand_dims(sentinel_weight,1) # N,1
 		pred = pred_softmax * sentinel_weight  # g * rnnprob(w)
@@ -215,14 +225,13 @@ class RNNModel:
 
 	def greedyInferenceModel(self, params ):
 		lstm_cell = params['lstm_cell']
-		encoder_outputs = params['encoder_outputs']
 		token_vocab_size = params['vocab_size']
 		lstm_cell_size = params['lstm_cell_size']
 		batch_size = params['batch_size']
 		embeddings_dim = params['embeddings_dim']
 		batch_time_steps = params['max_output_seq_length']
 		token_emb_mat = params['token_emb_mat']
-		w_out, b_out = params['output_vars']
+		out_weights = params['output_vars']
 		encoder_outputs = params['encoder_outputs']
 		cell_output, state = params['cell_state']
 		encoder_input_sequence = params['encoder_input_sequence']
@@ -238,8 +247,8 @@ class RNNModel:
 			inputs_current_time_step = tf.reshape( tf.nn.embedding_lookup(token_emb_mat, inp) , [-1, embeddings_dim] )
 			if time_step > 0: tf.get_variable_scope().reuse_variables()
 			
-			(cell_output, state), alpha, sentinel_weight = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs, prev_cell_output=cell_output, sentinel=sentinel, reuse=(time_step!=0), state=state)
-			cur_outputs = self.getDecoderOutput(cell_output, lstm_cell_size, token_vocab_size, w_out, b_out, (alpha,sentinel_weight), encoder_input_sequence, batch_size, token_vocab_size )
+			(cell_output, state), alpha, sentinel_weight, context = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs, prev_cell_output=cell_output, sentinel=sentinel, reuse=(time_step!=0), state=state)
+			cur_outputs = self.getDecoderOutput(cell_output, lstm_cell_size, token_vocab_size, out_weights, (alpha,sentinel_weight), encoder_input_sequence, batch_size, token_vocab_size, context )
 			assert cur_outputs.shape[1]==token_vocab_size
 			word_predictions = tf.argmax(cur_outputs,axis=1)
 			outputs.append(word_predictions)
@@ -279,7 +288,8 @@ class RNNModel:
 
 		#decoder output variable
 		self.initDecoderOutputVariables(lstm_cell_size,token_vocab_size)
-		w_out, b_out = self.getDecoderOutputVariables()
+		out_weights = self.getDecoderOutputVariables()
+		#w_out, b_out, w_context_out, b_context_out = out_weights
 
 		#unrolled lstm 
 		outputs = [] # h values at each time step
@@ -298,8 +308,8 @@ class RNNModel:
 				for time_step in range(num_steps):
 					if time_step > 0: tf.get_variable_scope().reuse_variables()
 					inputs_current_time_step = inputs[:, time_step, :]
-					(cell_output, state), alpha, sentinel_weight = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs, prev_cell_output=cell_output, sentinel=sentinel, reuse=(time_step!=0), state=state)
-					cur_pred = self.getDecoderOutput(cell_output, lstm_cell_size, token_vocab_size, w_out, b_out, (alpha,sentinel_weight), encoder_input_sequence, batch_size, token_vocab_size )
+					(cell_output, state), alpha, sentinel_weight, context = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs, prev_cell_output=cell_output, sentinel=sentinel, reuse=(time_step!=0), state=state)
+					cur_pred = self.getDecoderOutput(cell_output, lstm_cell_size, token_vocab_size, out_weights, (alpha,sentinel_weight), encoder_input_sequence, batch_size, token_vocab_size, context)
 					pred.append(cur_pred)
 
 					cur_decoder_output_inpmatch_sequence = decoder_output_inpmatch_sequence[:, time_step, :] # N,inp_seq_length 
@@ -315,7 +325,7 @@ class RNNModel:
 			elif mode=='inference':
 
 				#Greedy
-				params['output_vars'] = w_out, b_out
+				params['output_vars'] = out_weights
 				params['cell_output'] = cell_output
 				params['encoder_outputs'] = encoder_outputs
 				params['cell_state'] = cell_output, state

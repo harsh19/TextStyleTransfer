@@ -80,8 +80,8 @@ class RNNModel:
 			rev_outputs = tf.stack(rev_outputs) 
 			#rev_outputs = tf.reverse(rev_outputs, axis=0)
 			#print outputs.shape
-			#outputs = outputs + rev_outputs
-			outputs = tf.concat([outputs, rev_outputs], axis=2)
+			outputs = outputs + rev_outputs
+			#outputs = tf.concat([outputs, rev_outputs], axis=2)
 			#print outputs.shape
 
 		return outputs
@@ -172,7 +172,7 @@ class RNNModel:
 	def initDecoderOutputVariables(self,lstm_cell_size, token_vocab_size):
 		with tf.variable_scope('decoder_output', reuse=None) as scope:
 			w_out = tf.get_variable('w_out', shape=[lstm_cell_size, token_vocab_size], initializer=tf.random_normal_initializer(-1.0,1.0))
-			w_out = tf.get_variable('b_out', shape=[token_vocab_size]) # , initializer=tf.random_normal())
+			b_out = tf.get_variable('b_out', shape=[token_vocab_size]) # , initializer=tf.random_normal())
 			w_context_out = tf.get_variable('w_context_out', shape=[lstm_cell_size, token_vocab_size], initializer=tf.random_normal_initializer(-1.0,1.0))
 			b_context_out = tf.get_variable('b_context_out', initializer=tf.random_normal([token_vocab_size]) )
 			scope.reuse_variables()
