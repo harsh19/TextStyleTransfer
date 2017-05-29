@@ -140,9 +140,9 @@ class RNNModel:
 			alpha = tf.nn.softmax(out_att)  # (N, encoder_sequence_length+1)
 			sentinel_weight = alpha[:,0]
 			alpha = alpha[:,1:]
-			#context = tf.reduce_sum(encoder_vals * tf.expand_dims(alpha, 2), 1, name='context')   #(N, lstm_cell_size)
+			context = tf.reduce_sum(encoder_vals * tf.expand_dims(alpha, 2), 1, name='context')   #(N, lstm_cell_size)
 			#return context, alpha
-			return alpha, sentinel_weight
+			return alpha, sentinel_weight, context
 
 	def getInitialState(self, encoder_outputs, lstm_cell_size, reuse=False):
 		with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
@@ -153,8 +153,9 @@ class RNNModel:
 			return decoder_initial_state
 
 	def runDecoderStep(self, lstm_cell, cur_inputs, prev_cell_output, state, encoder_outputs, sentinel, reuse=False):
-		alpha, sentinel_weight = self.attentionLayer(encoder_outputs, prev_cell_output, sentinel, reuse) # alpha is (None, encoder_sequence_length)
-		inputs =  cur_inputs #tf.concat([ cur_inputs, context ], axis=1)
+		alpha, sentinel_weight, context = self.attentionLayer(encoder_outputs, prev_cell_output, sentinel, reuse) # alpha is (None, encoder_sequence_length)
+		#inputs =  cur_inputs 
+		inputs = tf.concat([ cur_inputs, context ], axis=1)
 		return lstm_cell(inputs, state=state), alpha, sentinel_weight
 
 
