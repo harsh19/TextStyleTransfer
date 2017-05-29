@@ -305,7 +305,7 @@ class RNNModel:
 					cur_decoder_output_inpmatch_sequence = decoder_output_inpmatch_sequence[:, time_step, :] # N,inp_seq_length 
 					# alpha: N, inp_seq_length
 					cur_sentinel_attention_loss = tf.reduce_sum( alpha * cur_decoder_output_inpmatch_sequence, axis=1 ) # N
-					sentinel_loss.append(  tf.log(sentinel_weight+ cur_sentinel_attention_loss) ) 
+					sentinel_loss.append(  -tf.log(sentinel_weight+ cur_sentinel_attention_loss) ) 
 					#vals.append([cur_sentinel_attention_loss,sentinel_weight])
 
 				pred = tf.stack(pred), sentinel_loss # sentinel_loss: T, N
