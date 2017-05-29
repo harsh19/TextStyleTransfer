@@ -195,12 +195,26 @@ class PreProcessing:
 			for output_token in cur_outputs:
 				idx = np.zeros(len(cur_inputs), dtype=np.float32)
 				for j,token in enumerate(cur_inputs):
+					if token <= 3:  #==self.word_to_idx[self.pad_word]:
+						continue
 					if token == output_token:
 						idx[j]=1.0
 				tmp.append(idx)
 			matching_input_token.append(tmp)
 		matching_input_token = np.array(matching_input_token)
 		encoder_inputs = np.array(inputs)
+
+		'''
+		print "-------------------------------------------"
+		print matching_input_token[0]
+		print decoder_outputs[0]
+		print encoder_inputs[0]
+		print "-------------------------------------------"
+		print matching_input_token[1]
+		print decoder_outputs[1]
+		print encoder_inputs[1]
+		print "-------------------------------------------"		
+		'''
 
 		if do_shuffle:
 			#shuffling
