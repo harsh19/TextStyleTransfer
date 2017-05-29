@@ -48,6 +48,7 @@ def main():
 	params['max_vocab_size'] = config.max_vocab_size
 	params['do_vocab_pruning'] = config.do_vocab_pruning
 	params['use_reverse_encoder'] = config.use_reverse_encoder
+	params['use_sentinel_loss'] =config.use_sentinel_loss
 
 	print "PARAMS:"
 	for key,value in params.items():

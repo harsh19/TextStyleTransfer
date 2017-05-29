@@ -405,7 +405,10 @@ class RNNModel:
 					cost = tf.divide(cost, masker_sum) # N
 					sentinel_loss = tf.divide(sentinel_loss, masker_sum) # N
 					self.sentinel_loss = sentinel_loss 
-					self.cost = cost + sentinel_loss
+					if params['use_sentinel_loss']:
+						self.cost = cost + sentinel_loss
+					else:
+						self.cost = cost
 
 			return pred #[ tf.nn.softmax(vals) for vals in pred]
 
