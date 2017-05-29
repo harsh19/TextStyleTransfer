@@ -290,6 +290,7 @@ class RNNModel:
 		encoder_outputs = tf.transpose(encoder_outputs,[1,0,2]) # N, timesteps, cellsize 
 		sentinel = None #tf.ones([batch_size,lstm_cell_size], dtype=tf.float32) # Not used
 		eps = tf.constant(0.000000001, dtype=tf.float32)
+		sentinel_loss = []
 		with tf.variable_scope("RNN"):
 			if mode=='training':
 				decoder_output_inpmatch_sequence = params['decoder_output_inpmatch_sequence']
@@ -304,13 +305,10 @@ class RNNModel:
 					cur_decoder_output_inpmatch_sequence = decoder_output_inpmatch_sequence[:, time_step, :] # N,inp_seq_length 
 					# alpha: N, inp_seq_length
 					cur_sentinel_attention_loss = tf.reduce_sum( alpha * cur_decoder_output_inpmatch_sequence, axis=1 ) # N
-					if time_step == 0:
-						sentinel_loss =  -tf.reduce_sum( tf.log(eps + sentinel_weight+ cur_sentinel_attention_loss) ) # N -> 1
-					else:
-						sentinel_loss = sentinel_loss + (-tf.reduce_sum( tf.log(sentinel_weight+ cur_sentinel_attention_loss) )) # N -> 1
+					sentinel_loss.append(  tf.log(sentinel_weight+ cur_sentinel_attention_loss) ) 
 					#vals.append([cur_sentinel_attention_loss,sentinel_weight])
 
-				pred = tf.stack(pred), sentinel_loss
+				pred = tf.stack(pred), sentinel_loss # sentinel_loss: T, N
 				tf.get_variable_scope().reuse_variables()
 				#self.vals = vals
 
@@ -405,6 +403,9 @@ class RNNModel:
 					cost = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=pred_masked, labels=token_output_sequences_placeholder) # token_output_sequences_placeholder is N,timesteps. cost will be N, timesteps
 					cost = tf.multiply(cost, masker)  # both masker and cost is N,timesteps. 
 					cost = tf.reduce_sum(cost) # N
+					sentinel_loss = tf.transpose( tf.stack(sentinel_loss) ) 
+					sentinel_loss = tf.multiply(sentinel_loss, masker)  # both masker and sentinel_loss is N,timesteps. 
+					sentinel_loss = tf.reduce_sum(sentinel_loss) # N
 					masker_sum = tf.reduce_sum(masker) # N
 					cost = tf.divide(cost, masker_sum) # N
 					sentinel_loss = tf.divide(sentinel_loss, masker_sum) # N
