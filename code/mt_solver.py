@@ -84,7 +84,10 @@ class Solver:
 				self.token_output_sequences_decoder_inpmatch_placeholder_list = self.model_obj.token_output_sequences_decoder_inpmatch_placeholder_list
 		else:
 			encoder_outputs = self.model_obj.getEncoderModel(config, mode='inference', reuse=reuse)
-			self.decoder_outputs_inference, self.encoder_outputs = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, 	mode='inference', reuse=False)	
+			self.decoder_outputs_inference, self.encoder_outputs = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, 	mode='inference', reuse=False)
+
+			if configuration.use_pointer:
+				self.beamSearchInit(config)
 
 	def trainModel(self, config, train_feed_dict, val_feed_dct, reverse_vocab, do_init=True):
 		
@@ -218,7 +221,13 @@ class Solver:
 					if i>20:
 						break
 			return decoder_outputs_inference
+		elif typ=="beam":
+			pass
 
+	def beamSearchInit(self, params):
+		#pass
+		encoder_outputs, initial_state_c, initial_state_h = self.model_obj.getBeamSearchVars(t=0,params=params)
+		prev_state_c, prev_state_h, encoder_input_sequence, inputs, cur_outputs, state_c, state_h = self.model_obj.getBeamSearchVars(t=1,params=params)
 
 	###################################################################################
 
@@ -312,5 +321,7 @@ class Solver:
 		return open(BLEUOutputFile_path,"r").read()
 
 ########################################################################################
+
+
 
 

@@ -133,7 +133,6 @@ class RNNModel:
 			sentinel = tf.get_variable('sentinel_vector',[lstm_cell_size])
 			sentinel = tf.expand_dims(sentinel,0)  # 1, lstm_cell_size
 			sentinel = tf.tile( sentinel, [shap[0],1] )
-			#print "sentinel = ",sentinel
 			sentinel_expanded = tf.expand_dims(sentinel,1)  # N, 1, lstm_cell_size
 			encoder_vals_expanded = tf.concat([sentinel_expanded, encoder_vals], axis=1) # N, encoder_sequence_length+1, lstm_cell_size
 
@@ -149,10 +148,18 @@ class RNNModel:
 			#return context, alpha
 			return alpha, sentinel_weight, context
 
-	def getInitialState(self, encoder_outputs, lstm_cell_size, reuse=False):
-		with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
+	def initgetInitialStateVars(self, encoder_outputs, lstm_cell_size):
+		with tf.variable_scope(tf.get_variable_scope(), reuse=None) as scope:
 			encoder_avg_output = tf.reduce_mean( encoder_outputs, axis=0) # N,dims
 			winit = tf.get_variable('winit', [encoder_avg_output.shape[-1], lstm_cell_size] )
+			self.winit = winit
+			scope.reuse_variables()
+
+	def getInitialState(self, encoder_outputs, lstm_cell_size, reuse=False):
+		with tf.variable_scope(tf.get_variable_scope(), reuse=reuse):
+			#print "tf.get_variable_scope() = ",tf.get_variable_scope()
+			encoder_avg_output = tf.reduce_mean( encoder_outputs, axis=0) # N,dims
+			winit = self.winit #tf.get_variable('winit', [encoder_avg_output.shape[-1], lstm_cell_size] )
 			encoder_avg_output = tf.matmul( encoder_avg_output, winit )
 			decoder_initial_state = [ encoder_avg_output, encoder_avg_output ] # c,h
 			return decoder_initial_state
@@ -284,6 +291,7 @@ class RNNModel:
 		self.decoder_cell = cell = lstm_cell
 
 		# inital state
+		self.initgetInitialStateVars(encoder_outputs, lstm_cell_size)
 		decoder_initial_state = self.getInitialState(encoder_outputs, lstm_cell_size, reuse=reuse)
 
 		#decoder output variable
@@ -299,10 +307,11 @@ class RNNModel:
 		encoder_outputs = tf.stack(encoder_outputs) # timesteps, N, cellsize
 		encoder_outputs = tf.transpose(encoder_outputs,[1,0,2]) # N, timesteps, cellsize 
 		sentinel = None #tf.ones([batch_size,lstm_cell_size], dtype=tf.float32) # Not used
-		eps = tf.constant(0.000000001, dtype=tf.float32)
-		sentinel_loss = []
+
 		with tf.variable_scope("RNN"):
 			if mode=='training':
+				eps = tf.constant(0.000000001, dtype=tf.float32)
+				sentinel_loss = []
 				decoder_output_inpmatch_sequence = params['decoder_output_inpmatch_sequence']
 				pred = []
 				for time_step in range(num_steps):
@@ -335,7 +344,6 @@ class RNNModel:
 				ret_encoder_outputs = tf.transpose(encoder_outputs,[1,0,2]) # N, timesteps, cellsize 
 				pred = outputs, ret_encoder_outputs
 
-				#Beam search
 		return pred
 
 
@@ -345,15 +353,15 @@ class RNNModel:
 	def getDecoderModel(self, config, encoder_outputs, is_training=False, mode='training', reuse=False, bucket_num=0 ):
 
 		print "==========================================================="
-		if mode=='inference' and is_training:
-			print "ERROR. INCONSISTENT PARAMETERS"
-		assert mode=='inference' or mode=='training'
 		print " IN DECODER MODEL :: ",encoder_outputs[0].shape
 
 		token_vocab_size = config['vocab_size']
 		max_sentence_length = config['max_output_seq_length']
 		embeddings_dim = config['embeddings_dim']
 		lstm_cell_size = config['lstm_cell_size']
+		if mode=="inference":
+			pass
+			#inference_type = config['inference_type']
 
 		#placeholders
 		if mode=='training':
@@ -388,6 +396,7 @@ class RNNModel:
 			if mode=='inference':
 				params={k:v for k,v in config.items()}
 				params['lstm_cell'] = lstm_cell 
+				self.decoder_lstm_cell = lstm_cell
 				params['encoder_outputs'] = encoder_outputs
 				params['token_emb_mat'] = token_emb_mat
 				params['encoder_input_sequence'] = encoder_input_sequence
@@ -428,3 +437,47 @@ class RNNModel:
 			return pred #[ tf.nn.softmax(vals) for vals in pred]
 
 	###################################################################################
+	def getBeamSearchVars(self, t, params):
+	
+		lstm_cell_size = params['lstm_cell_size']
+		batch_size = params['batch_size']
+		max_input_seq_length = params['max_input_seq_length']
+	
+		if t==0:
+			self.encoder_outputs_beam = encoder_outputs = tf.placeholder("float32", [batch_size, max_input_seq_length,lstm_cell_size], name="encoder_outputs_beam")
+			initial_state = self.getInitialState(encoder_outputs, lstm_cell_size, reuse=True) # 2, None, lstm_cell_size
+			initial_state_c, initial_state_h = initial_state
+			return encoder_outputs, initial_state_c, initial_state_h
+		
+		else:
+			max_output_seq_length = params['max_output_seq_length']
+			lstm_cell_size = params['lstm_cell_size']
+			token_vocab_size = params['vocab_size']
+
+			prev_state_c = tf.placeholder("float32", [batch_size, lstm_cell_size] , name="prev_state_c_beam")
+			prev_state_h = tf.placeholder("float32", [batch_size, lstm_cell_size] , name="prev_state_h_beam")
+			encoder_input_sequence = tf.placeholder("int32", [batch_size, max_input_seq_length] , name="encoder_input_sequence_beam")
+			prev_state = [prev_state_c, prev_state_h]
+			inputs = tf.placeholder("int32", [batch_size,1], name="inputs_beam")
+			
+			lstm_cell = self.decoder_lstm_cell 
+			prev_cell_output = prev_state[1]
+			token_emb_mat = self.decoder_token_emb_mat	
+			
+			with tf.variable_scope('decoder',reuse=True):
+	
+				out_weights = self.getDecoderOutputVariables()
+				inp = tf.nn.embedding_lookup(token_emb_mat, inputs) 
+				inputs_current_time_step = inp[:,0,:]
+				encoder_outputs_beam = self.encoder_outputs_beam
+
+				with tf.variable_scope("RNN"):
+
+					(cell_output, state), alpha, sentinel_weight, context = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs_beam, prev_cell_output=prev_cell_output, sentinel=None, reuse=True, state=prev_state)
+					cur_outputs = self.getDecoderOutput(cell_output, lstm_cell_size, token_vocab_size, out_weights, (alpha,sentinel_weight), encoder_input_sequence, batch_size, token_vocab_size, context )
+
+					state_c, state_h = state
+					return prev_state_c, prev_state_h, encoder_input_sequence, inputs, cur_outputs, state_c, state_h
+
+
+
