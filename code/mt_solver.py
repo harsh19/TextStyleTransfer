@@ -232,9 +232,10 @@ class Solver:
 		self.prev_state_c, self.prev_state_h, self.encoder_input_sequence_beam, self.inputs_beam, self.cur_outputs_beam, self.state_c, self.state_h = self.model_obj.getBeamSearchVars(t=1,params=params)
 
 
-	def beamSearch(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None, print_all=True, beam_size=10, max_caption_length=30):
+	def beamSearch(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None, print_all=True, beam_size=8, max_caption_length=30):
 
-		# encoder_inputs: (1, encoder input_size)
+		# encoder_inputs: (4, encoder input_size)
+		inp_batch_size = 4
 		start = 1
 		end = 2
 		length_normalization_factor = 0.1
@@ -249,7 +250,10 @@ class Solver:
 		batch_size = config['batch_size'] #x_test.shape[0]
 
 		# Get encoder outputs
-		encoder_inputs_batch =  np.repeat(encoder_inputs,batch_size,axis=0)
+		# encoder_inputs_batch =  np.repeat(encoder_inputs,batch_size,axis=0)
+		encoder_inputs_batch = encoder_inputs
+		for j in range(batch_size - inp_batch_size): 
+			encoder_inputs_batch = np.vstack( [encoder_inputs_batch, encoder_inputs_batch[0]] )
 		feed_dct={model_obj.token_lookup_sequences_placeholder_inference: encoder_inputs_batch }
 		encoder_outputs = np.array( sess.run(self.encoder_outputs, feed_dict= feed_dct) ) # timesteps, N, lstm_cell_size
 		encoder_outputs = np.transpose(encoder_outputs, [1,0,2]) # (N,timesteps,lstm_cell_size)
@@ -260,27 +264,42 @@ class Solver:
 		# Get initial state
 		feed_dct = {self.encoder_outputs_beam:encoder_outputs}
 		initial_state_c, initial_state_h = sess.run( [self.initial_state_c, self.initial_state_h], feed_dict=feed_dct ) # N, lstm_cell_size
-		initial_state_c, initial_state_h = initial_state_c[0], initial_state_h[0]
-
+		
 		# initial beam
-		initial_beam = OutputSentence(
-			sentence=[start], # to do: replace with start symbol index
-			state=(initial_state_c, initial_state_h),
-			logprob=0.0,
-			score=0.0,
-			metadata=[""])
-		partial_captions = TopN(beam_size)
-		partial_captions.push(initial_beam)
-		complete_captions = TopN(beam_size)
+		partial_captions_all = []
+		complete_captions_all = []
+		for i in range(inp_batch_size):
+			initial_state_ci, initial_state_hi = initial_state_c[i], initial_state_h[i]
+			initial_beam = OutputSentence(
+				sentence=[start], # to do: replace with start symbol index
+				state=(initial_state_ci, initial_state_hi),
+				logprob=0.0,
+				score=0.0,
+				metadata=[""])
+			partial_captions_all.append( TopN(beam_size) )
+			partial_captions_all[i].push(initial_beam)
+			complete_captions_all[i].append( TopN(beam_size) )
 
 		# Run beam search.
 		for _ in range(max_caption_length - 1):	
-			partial_captions_list = partial_captions.extract()
-			partial_captions.reset()
-			input_feed = np.array([c.sentence[-1] for c in partial_captions_list])
-			input_feed = np.reshape(input_feed, [-1,1])
-			state_feed_c = np.array([c.state[0] for c in partial_captions_list])
-			state_feed_h = np.array([c.state[1] for c in partial_captions_list])
+			partial_captions_list = []
+			input_feed = []
+			state_feed_c = []
+			state_feed_h = []
+			mapper = []
+			for i in range(inp_batch_size):
+				partial_captions = partial_captions_all[i]
+				tmp = partial_captions.extract()
+				partial_captions_list.extend(tmp)
+				for j in range(len(tmp)): mapper.append(i)
+				partial_captions.reset()
+				input_feed.extend( [c.sentence[-1] for c in partial_captions_list] )
+				state_feed_c.extend( [c.state[0] for c in partial_captions_list] )
+				state_feed_h.extend( [c.state[1] for c in partial_captions_list] )
+
+			input_feed = np.reshape(np.array(input_feed), [-1,1])
+			state_feed_c = np.array(state_feed_c)
+			state_feed_h = np.array(state_feed_h)
 
 			#self.prev_state_c, self.prev_state_h, self.encoder_input_sequence_beam, self.inputs_beam, self.cur_outputs_beam, self.state_c, self.state_h
 			feed_dct_tmp = { self.prev_state_c:state_feed_c, self.prev_state_h:state_feed_h, self.encoder_input_sequence_beam:encoder_inputs_batch, self.inputs_beam:input_feed, self.encoder_outputs_beam:encoder_outputs}
@@ -297,6 +316,7 @@ class Solver:
 			softmax = cur_outputs_beam
 
 			for i, partial_caption in enumerate(partial_captions_list):
+				cur_mapper = mapper[i]
 				word_probabilities = softmax[i]
 				state = state_c[i], state_h[i]
 				# For this partial caption, get the beam_size most probable next words.
@@ -314,22 +334,28 @@ class Solver:
 						if length_normalization_factor > 0:
 							score /= len(sentence)**length_normalization_factor
 						beam = OutputSentence(sentence, state, logprob, score, [""])
-						complete_captions.push(beam)
+						complete_captions_all[cur_mapper].push(beam)
 					else:
 						beam = OutputSentence(sentence, state, logprob, score, [""])
-						partial_captions.push(beam)
-			if partial_captions.size() == 0:
+						partial_captions_all[cur_mapper].push(beam)
+		
+			if sum( [partial_captions_all[i].size() for i in range(inp_batch_size)] ) ==0:
 				# We have run out of partial candidates; happens when beam_size = 1.
 				break
 
 		# If we have no complete captions then fall back to the partial captions.
 		# But never output a mixture of complete and partial captions because a
 		# partial caption could have a higher score than all the complete captions.
-		if not complete_captions.size():
-			complete_captions = partial_captions
+		for i in range(inp_batch_size):
+			if not complete_captions_all[i].size():
+				complete_captions_all[i] = partial_captions_all[i]
 
-		tmp = complete_captions.extract(sort=True)
-		return np.array( [ c.sentence for c in tmp ] )
+		ret = []
+		for i in range(inp_batch_size):
+			tmp = complete_captions_all[i].extract(sort=True)
+			tmp = np.array( [ c.sentence for c in tmp ] )
+			ret.append(tmp)
+		return ret
 		#return np.array( tmp[0].sentence )
 		
 
@@ -341,7 +367,7 @@ class Solver:
 		if inference_type=="greedy":
 			batch_size = config['batch_size']
 		else:# beam
-			batch_size = 1 
+			batch_size = 4
 		num_batches = ( len(encoder_inputs) + batch_size - 1)/ batch_size 
 		print "num_batches = ",num_batches
 		print "batch_size = ", batch_size 
@@ -364,14 +390,16 @@ class Solver:
 				decoder_outputs_inference.extend( decoder_outputs_inference_cur[:lim] )
 			else:
 				decoder_outputs_inference_cur = self.beamSearch(config, encoder_inputs_cur, decoder_gt_outputs_cur, reverse_vocab, sess=sess, print_all=False)
-				decoder_outputs_inference.append( decoder_outputs_inference_cur[0] )
-                        break
+				decoder_outputs_inference.extend( decoder_outputs_inference_cur )
+			break
 		print "len(encoder_inputs) = ",len(encoder_inputs)
 		print "len(decoder_outputs_inference) = ",len(decoder_outputs_inference)
 		print decoder_outputs_inference[0], decoder_ground_truth_outputs[0]
 
-                ### debug
-                print ' '.join( [reverse_vocab[i] for i in decoder_outputs_inference[0]] )
+		### debug
+		print ' '.join( [reverse_vocab[i] for i in decoder_outputs_inference[0]] )
+		print ""
+		print ' '.join( [reverse_vocab[i] for i in decoder_outputs_inference[1]] )
 
 		return decoder_outputs_inference, decoder_ground_truth_outputs
 
