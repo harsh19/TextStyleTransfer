@@ -21,7 +21,7 @@ from prepro import PreProcessing
 usage =  '''
 python mt_main.py train <num_of_iters> <model_name>
 OR
-python mt_main.py inference <saved_model_path>
+python mt_main.py inference <saved_model_path> <greedy/beam>
 OR
 python mt_main.py debug
 OR 
@@ -168,6 +168,9 @@ def main():
 	# INFERENCE
 	elif mode=="inference":
 		saved_model_path = sys.argv[2]
+		print "saved_model_path = ",saved_model_path
+		inference_type = sys.argv[3] # greedy / beam
+		print "inference_type = ",inference_type
 		params['saved_model_path'] = saved_model_path
 		rnn_model = solver.Solver(params, buckets=None, mode='inference')
 		_ = rnn_model.getModel(params, mode='inference', reuse=False, buckets=None)
@@ -178,7 +181,7 @@ def main():
 		#print "val_encoder_inputs = ",val_encoder_inputs
 		if len(val_decoder_outputs.shape)==3:
 			val_decoder_outputs=np.reshape(val_decoder_outputs, (val_decoder_outputs.shape[0], val_decoder_outputs.shape[1]))
-		decoder_outputs_inference, decoder_ground_truth_outputs = rnn_model.solveAll(params, val_encoder_inputs, val_decoder_outputs, preprocessing.idx_to_word)        			   
+		decoder_outputs_inference, decoder_ground_truth_outputs = rnn_model.solveAll(params, val_encoder_inputs, val_decoder_outputs, preprocessing.idx_to_word, inference_type=inference_type)        			   
 		validOutFile_name = saved_model_path+".valid.output"
 		original_data_path = "../data/valid.original.nltktok"
 		BLEUOutputFile_path = saved_model_path + ".valid.BLEU"
@@ -188,7 +191,7 @@ def main():
 		test_encoder_inputs, test_decoder_inputs, test_decoder_outputs, test_decoder_outputs_matching_inputs = test
 		if len(test_decoder_outputs.shape)==3:
 			test_decoder_outputs=np.reshape(test_decoder_outputs, (test_decoder_outputs.shape[0], test_decoder_outputs.shape[1]))
-		decoder_outputs_inference, decoder_ground_truth_outputs = rnn_model.solveAll(params, test_encoder_inputs, test_decoder_outputs, preprocessing.idx_to_word)
+		decoder_outputs_inference, decoder_ground_truth_outputs = rnn_model.solveAll(params, test_encoder_inputs, test_decoder_outputs, preprocessing.idx_to_word, inference_type=inference_type)
 		validOutFile_name = saved_model_path+".test.output"
 		original_data_path = "../data/test.original.nltktok"
 		BLEUOutputFile_path = saved_model_path + ".test.BLEU"

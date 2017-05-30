@@ -475,6 +475,7 @@ class RNNModel:
 
 					(cell_output, state), alpha, sentinel_weight, context = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs_beam, prev_cell_output=prev_cell_output, sentinel=None, reuse=True, state=prev_state)
 					cur_outputs = self.getDecoderOutput(cell_output, lstm_cell_size, token_vocab_size, out_weights, (alpha,sentinel_weight), encoder_input_sequence, batch_size, token_vocab_size, context )
+					# cur_outputs are probabilities
 
 					state_c, state_h = state
 					return prev_state_c, prev_state_h, encoder_input_sequence, inputs, cur_outputs, state_c, state_h
