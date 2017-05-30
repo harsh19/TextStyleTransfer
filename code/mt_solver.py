@@ -232,13 +232,14 @@ class Solver:
 		self.prev_state_c, self.prev_state_h, self.encoder_input_sequence_beam, self.inputs_beam, self.cur_outputs_beam, self.state_c, self.state_h = self.model_obj.getBeamSearchVars(t=1,params=params)
 
 
-	def beamSearch(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None, print_all=True, beam_size=8, max_caption_length=30):
+	def beamSearch(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None, print_all=True, beam_size=4, max_caption_length=30):
 
-		# encoder_inputs: (4, encoder input_size)
-		inp_batch_size = 4
+            
+                # encoder_inputs: (8, encoder input_size)
+		inp_batch_size = 8
 		start = 1
-		end = 2
-		length_normalization_factor = 0.1
+		ends = [2,0]
+		length_normalization_factor = 0.0
 
 		if sess==None:
 	  		sess = tf.Session()
@@ -257,13 +258,14 @@ class Solver:
 		feed_dct={model_obj.token_lookup_sequences_placeholder_inference: encoder_inputs_batch }
 		encoder_outputs = np.array( sess.run(self.encoder_outputs, feed_dict= feed_dct) ) # timesteps, N, lstm_cell_size
 		encoder_outputs = np.transpose(encoder_outputs, [1,0,2]) # (N,timesteps,lstm_cell_size)
-		print encoder_outputs.shape
 		##encoder_outputs_cur = encoder_outputs[0] # timesteps
 		print "------>>>>>>>>>>>>>>>>>>>>>>>>"
 		
 		# Get initial state
 		feed_dct = {self.encoder_outputs_beam:encoder_outputs}
 		initial_state_c, initial_state_h = sess.run( [self.initial_state_c, self.initial_state_h], feed_dict=feed_dct ) # N, lstm_cell_size
+                encoder_outputs = encoder_outputs[:inp_batch_size]
+                print encoder_outputs.shape
 		
 		# initial beam
 		partial_captions_all = []
@@ -278,7 +280,7 @@ class Solver:
 				metadata=[""])
 			partial_captions_all.append( TopN(beam_size) )
 			partial_captions_all[i].push(initial_beam)
-			complete_captions_all[i].append( TopN(beam_size) )
+			complete_captions_all.append( TopN(beam_size) )
 
 		# Run beam search.
 		for _ in range(max_caption_length - 1):	
@@ -287,22 +289,26 @@ class Solver:
 			state_feed_c = []
 			state_feed_h = []
 			mapper = []
+                        encoder_outputs_all = []
 			for i in range(inp_batch_size):
 				partial_captions = partial_captions_all[i]
 				tmp = partial_captions.extract()
 				partial_captions_list.extend(tmp)
 				for j in range(len(tmp)): mapper.append(i)
-				partial_captions.reset()
-				input_feed.extend( [c.sentence[-1] for c in partial_captions_list] )
-				state_feed_c.extend( [c.state[0] for c in partial_captions_list] )
-				state_feed_h.extend( [c.state[1] for c in partial_captions_list] )
-
-			input_feed = np.reshape(np.array(input_feed), [-1,1])
-			state_feed_c = np.array(state_feed_c)
-			state_feed_h = np.array(state_feed_h)
+				for j in range(len(tmp)): encoder_outputs_all.append(encoder_outputs[i])
+				partial_captions_all[i].reset()
+			
+                        input_feed = np.array( [c.sentence[-1] for c in partial_captions_list] )
+			state_feed_c = np.array( [c.state[0] for c in partial_captions_list] )
+			state_feed_h = np.array( [c.state[1] for c in partial_captions_list] )
+			input_feed = np.reshape( input_feed, [-1,1])
+                        #print input_feed.shape, state_feed_c.shape, state_feed_h.shape, len(encoder_outputs_all ) 
+                        for gapper in range(batch_size - len(encoder_outputs_all)):
+                            encoder_outputs_all.append(encoder_outputs_all[0])
+                        encoder_outputs_all = np.array( encoder_outputs_all )
 
 			#self.prev_state_c, self.prev_state_h, self.encoder_input_sequence_beam, self.inputs_beam, self.cur_outputs_beam, self.state_c, self.state_h
-			feed_dct_tmp = { self.prev_state_c:state_feed_c, self.prev_state_h:state_feed_h, self.encoder_input_sequence_beam:encoder_inputs_batch, self.inputs_beam:input_feed, self.encoder_outputs_beam:encoder_outputs}
+			feed_dct_tmp = { self.prev_state_c:state_feed_c, self.prev_state_h:state_feed_h, self.encoder_input_sequence_beam:encoder_inputs_batch, self.inputs_beam:input_feed, self.encoder_outputs_beam:encoder_outputs_all}
 			feed_dct = {}
 			lim = len(input_feed)
 			for k,v in feed_dct_tmp.items():
@@ -330,11 +336,12 @@ class Solver:
 					sentence = partial_caption.sentence + [w]
 					logprob = partial_caption.logprob + math.log(p)
 					score = logprob
-					if w == end:
-						if length_normalization_factor > 0:
-							score /= len(sentence)**length_normalization_factor
-						beam = OutputSentence(sentence, state, logprob, score, [""])
-						complete_captions_all[cur_mapper].push(beam)
+					if w in ends:
+                                                if len(sentence)>5:
+                                                        if length_normalization_factor > 0:
+		        				        score /= len(sentence)**length_normalization_factor
+        						beam = OutputSentence(sentence, state, logprob, score, [""])
+	        					complete_captions_all[cur_mapper].push(beam)
 					else:
 						beam = OutputSentence(sentence, state, logprob, score, [""])
 						partial_captions_all[cur_mapper].push(beam)
@@ -354,7 +361,12 @@ class Solver:
 		for i in range(inp_batch_size):
 			tmp = complete_captions_all[i].extract(sort=True)
 			tmp = np.array( [ c.sentence for c in tmp ] )
-			ret.append(tmp)
+			answer = tmp[1]
+                        for tt in tmp:
+                            if len(tt)>5:
+                                answer = tt
+                                break
+                        ret.append(answer) # only best scoring
 		return ret
 		#return np.array( tmp[0].sentence )
 		
@@ -367,7 +379,7 @@ class Solver:
 		if inference_type=="greedy":
 			batch_size = config['batch_size']
 		else:# beam
-			batch_size = 4
+			batch_size = 8
 		num_batches = ( len(encoder_inputs) + batch_size - 1)/ batch_size 
 		print "num_batches = ",num_batches
 		print "batch_size = ", batch_size 
@@ -391,15 +403,22 @@ class Solver:
 			else:
 				decoder_outputs_inference_cur = self.beamSearch(config, encoder_inputs_cur, decoder_gt_outputs_cur, reverse_vocab, sess=sess, print_all=False)
 				decoder_outputs_inference.extend( decoder_outputs_inference_cur )
-			break
+			#break
 		print "len(encoder_inputs) = ",len(encoder_inputs)
 		print "len(decoder_outputs_inference) = ",len(decoder_outputs_inference)
 		print decoder_outputs_inference[0], decoder_ground_truth_outputs[0]
 
 		### debug
+                '''
 		print ' '.join( [reverse_vocab[i] for i in decoder_outputs_inference[0]] )
-		print ""
+                print "original", ' '.join( [reverse_vocab[i] for i in decoder_ground_truth_outputs[0]] )
 		print ' '.join( [reverse_vocab[i] for i in decoder_outputs_inference[1]] )
+                print "original", ' '.join( [reverse_vocab[i] for i in decoder_ground_truth_outputs[1]] )
+		print ' '.join( [reverse_vocab[i] for i in decoder_outputs_inference[2]] )
+                print "original", ' '.join( [reverse_vocab[i] for i in decoder_ground_truth_outputs[2]] )
+		print ' '.join( [reverse_vocab[i] for i in decoder_outputs_inference[3]] )
+                print "original", ' '.join( [reverse_vocab[i] for i in decoder_ground_truth_outputs[3]] )
+                '''
 
 		return decoder_outputs_inference, decoder_ground_truth_outputs
 
