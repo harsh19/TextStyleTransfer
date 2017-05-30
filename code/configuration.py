@@ -8,7 +8,7 @@ do_vocab_pruning = True
 max_vocab_size = 12000
 
 # Pointer or seq2seq
-use_pointer=True ### USE POINTER OR NORMAL seq2seq rnn. As a note, normal seq2seq rnn has additional tranformation of encoder inputs
+use_pointer=False ### USE POINTER OR NORMAL seq2seq rnn. As a note, normal seq2seq rnn has additional tranformation of encoder inputs
 
 # model config
 lstm_cell_size=128

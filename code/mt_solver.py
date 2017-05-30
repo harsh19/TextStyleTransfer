@@ -373,7 +373,7 @@ class Solver:
 
 	###################################################################################
 
-	def solveAll(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None, print_progress=True, inference_type="beam"): # sampling
+	def solveAll(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None, print_progress=True, inference_type="greedy"): # sampling
 		print " SolveAll ...... ============================================================"
 		
 		if inference_type=="greedy":
