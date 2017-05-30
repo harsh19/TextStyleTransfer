@@ -237,7 +237,7 @@ class Solver:
 		# encoder_inputs: (1, encoder input_size)
 		start = 1
 		end = 2
-		length_normalization_factor = 0.0
+		length_normalization_factor = 0.1
 
 		if sess==None:
 	  		sess = tf.Session()
@@ -329,13 +329,13 @@ class Solver:
 			complete_captions = partial_captions
 
 		tmp = complete_captions.extract(sort=True)
-		#return np.array( [ c.sentence for c in tmp ] )
-		return np.array( tmp[0].sentence )
+		return np.array( [ c.sentence for c in tmp ] )
+		#return np.array( tmp[0].sentence )
 		
 
 	###################################################################################
 
-	def solveAll(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None, print_progress=True, inference_type="greedy"): # sampling
+	def solveAll(self, config, encoder_inputs, decoder_ground_truth_outputs, reverse_vocab, sess=None, print_progress=True, inference_type="beam"): # sampling
 		print " SolveAll ...... ============================================================"
 		
 		if inference_type=="greedy":
@@ -364,10 +364,15 @@ class Solver:
 				decoder_outputs_inference.extend( decoder_outputs_inference_cur[:lim] )
 			else:
 				decoder_outputs_inference_cur = self.beamSearch(config, encoder_inputs_cur, decoder_gt_outputs_cur, reverse_vocab, sess=sess, print_all=False)
-				decoder_outputs_inference.append( decoder_outputs_inference_cur[:lim] )
+				decoder_outputs_inference.append( decoder_outputs_inference_cur[0] )
+                        break
 		print "len(encoder_inputs) = ",len(encoder_inputs)
 		print "len(decoder_outputs_inference) = ",len(decoder_outputs_inference)
 		print decoder_outputs_inference[0], decoder_ground_truth_outputs[0]
+
+                ### debug
+                print ' '.join( [reverse_vocab[i] for i in decoder_outputs_inference[0]] )
+
 		return decoder_outputs_inference, decoder_ground_truth_outputs
 
 	###################################################################################
