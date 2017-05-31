@@ -75,7 +75,7 @@ class Solver:
 				reuse=True
 
 			self.encoder_outputs = encoder_outputs = self.model_obj.getEncoderModel(config, mode='inference', reuse=True )
-			decoder_outputs_inference, encoder_outputs = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, mode='inference', reuse=True)	
+			decoder_outputs_inference, encoder_outputs, self.alpha_inference = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, mode='inference', reuse=True)	
 			self.decoder_outputs_inference = decoder_outputs_inference
 			
 			self.token_lookup_sequences_placeholder_list  = self.model_obj.token_lookup_sequences_placeholder_list
@@ -86,7 +86,7 @@ class Solver:
 				self.token_output_sequences_decoder_inpmatch_placeholder_list = self.model_obj.token_output_sequences_decoder_inpmatch_placeholder_list
 		else:
 			encoder_outputs = self.model_obj.getEncoderModel(config, mode='inference', reuse=reuse)
-			self.decoder_outputs_inference, self.encoder_outputs, self.alpha_inference = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, 	mode='inference', reuse=False)
+			self.decoder_outputs_inference, self.encoder_outputs, self.alpha_inference = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, mode='inference', reuse=False)
 
 			if configuration.use_pointer:
 				self.beamSearchInit(config)
