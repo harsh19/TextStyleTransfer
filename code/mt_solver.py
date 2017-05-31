@@ -222,7 +222,7 @@ class Solver:
 					print ""
 					if i>20:
 						break
-			return decoder_outputs_inference
+			return decoder_outputs_inference, alpha_inference
 		elif typ=="beam":
 			pass
 
@@ -385,6 +385,7 @@ class Solver:
 		print "batch_size = ", batch_size 
 		print "len(encoder_inputs) = ",len(encoder_inputs)
 		decoder_outputs_inference = []
+		alpha = []
 		for i in range(num_batches):
 			if print_progress:
 				print "i= ",i
@@ -398,15 +399,16 @@ class Solver:
 					decoder_gt_outputs_cur = np.vstack( (decoder_gt_outputs_cur,decoder_ground_truth_outputs[0]) )
 					#decoder_gt_outputs_cur.extend(decoder_ground_truth_outputs[0]*gap)
 			if inference_type=="greedy":
-				decoder_outputs_inference_cur = self.runInference(config, encoder_inputs_cur, decoder_gt_outputs_cur, reverse_vocab, sess=sess, print_all=False)
+				decoder_outputs_inference_cur, alpha_cur = self.runInference(config, encoder_inputs_cur, decoder_gt_outputs_cur, reverse_vocab, sess=sess, print_all=False)
 				decoder_outputs_inference.extend( decoder_outputs_inference_cur[:lim] )
+                                alpha.extend(alpha_cur[:lim])
 			else:
 				decoder_outputs_inference_cur = self.beamSearch(config, encoder_inputs_cur, decoder_gt_outputs_cur, reverse_vocab, sess=sess, print_all=False)
 				decoder_outputs_inference.extend( decoder_outputs_inference_cur )
 			#break
 		print "len(encoder_inputs) = ",len(encoder_inputs)
 		print "len(decoder_outputs_inference) = ",len(decoder_outputs_inference)
-		print decoder_outputs_inference[0], decoder_ground_truth_outputs[0]
+		print decoder_outputs_inference[0], decoder_ground_truth_outputs[0], sum(alpha[0]), len(alpha)
 
 		### debug
                 '''
