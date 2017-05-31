@@ -216,7 +216,7 @@ class RNNModel:
 
 		num_steps = batch_time_steps
 		outputs = []
-		alpha = []
+		alpha_all = []
 
 		for time_step in range(num_steps):
 			if time_step==0:
@@ -230,8 +230,9 @@ class RNNModel:
 			assert cur_outputs.shape[1]==token_vocab_size
 			word_predictions = tf.argmax(cur_outputs,axis=1)
 			outputs.append(word_predictions)
+			alpha_all.append(alpha)
 			inp = word_predictions
-		return outputs, alpha
+		return outputs, alpha_all
 
 
 	def decoderRNN(self, x, params, reuse=False, mode='training'):
