@@ -216,6 +216,7 @@ class RNNModel:
 
 		num_steps = batch_time_steps
 		outputs = []
+		alpha = []
 
 		for time_step in range(num_steps):
 			if time_step==0:

@@ -207,6 +207,7 @@ class Solver:
 		if typ=="greedy":
 			decoder_outputs_inference, encoder_outputs, alpha_inference = np.array( sess.run([self.decoder_outputs_inference, self.encoder_outputs, self.alpha_inference], feed_dict= feed_dct) ) # timesteps, N
 			encoder_outputs = np.array(encoder_outputs)
+			alpha_inference = np.array(alpha_inference)
 			decoder_outputs_inference = np.transpose(decoder_outputs_inference) # (N,timesteps)
 			if print_all:
 				for i,row in enumerate(decoder_outputs_inference):
@@ -408,7 +409,8 @@ class Solver:
 			#break
 		print "len(encoder_inputs) = ",len(encoder_inputs)
 		print "len(decoder_outputs_inference) = ",len(decoder_outputs_inference)
-		print decoder_outputs_inference[0], decoder_ground_truth_outputs[0], sum(alpha[0]), len(alpha)
+		print decoder_outputs_inference[0], decoder_ground_truth_outputs[0]
+		print sum(alpha[0]), len(alpha), alpha[0].shape
 
 		### debug
                 '''

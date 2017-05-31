@@ -246,6 +246,7 @@ class RNNModel:
 
 		num_steps = batch_time_steps
 		outputs = []
+		alpha = []
 
 		for time_step in range(num_steps):
 			if time_step==0:
@@ -254,11 +255,12 @@ class RNNModel:
 			inputs_current_time_step = tf.reshape( tf.nn.embedding_lookup(token_emb_mat, inp) , [-1, embeddings_dim] )
 			if time_step > 0: tf.get_variable_scope().reuse_variables()
 			
-			(cell_output, state), alpha, sentinel_weight, context = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs, prev_cell_output=cell_output, sentinel=sentinel, reuse=(time_step!=0), state=state)
+			(cell_output, state), alpha_cur, sentinel_weight, context = self.runDecoderStep(lstm_cell=lstm_cell, cur_inputs=inputs_current_time_step, encoder_outputs=encoder_outputs, prev_cell_output=cell_output, sentinel=sentinel, reuse=(time_step!=0), state=state)
 			cur_outputs = self.getDecoderOutput(cell_output, lstm_cell_size, token_vocab_size, out_weights, (alpha,sentinel_weight), encoder_input_sequence, batch_size, token_vocab_size, context )
 			assert cur_outputs.shape[1]==token_vocab_size
 			word_predictions = tf.argmax(cur_outputs,axis=1)
 			outputs.append(word_predictions)
+			alpha.append(alpha_cur)
 			inp = word_predictions
 		return outputs, alpha
 
