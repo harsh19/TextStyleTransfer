@@ -230,7 +230,7 @@ class RNNModel:
 			word_predictions = tf.argmax(cur_outputs,axis=1)
 			outputs.append(word_predictions)
 			inp = word_predictions
-		return outputs
+		return outputs, alpha
 
 
 	def decoderRNN(self, x, params, reuse=False, mode='training'):
@@ -300,9 +300,9 @@ class RNNModel:
 				params['encoder_outputs'] = encoder_outputs
 				params['cell_state'] = cell_output, state
 				params['beam_size'] = 20
-				outputs =  self.greedyInferenceModel(params) #self.beamSearchInference(params)  #self.greedyInferenceModel(params)
+				outputs, alpha =  self.greedyInferenceModel(params) #self.beamSearchInference(params)  #self.greedyInferenceModel(params)
 				ret_encoder_outputs = tf.transpose(encoder_outputs,[1,0,2]) # N, timesteps, cellsize 
-				pred = outputs, ret_encoder_outputs
+				pred = outputs, ret_encoder_outputs, alpha
 
 				#Beam search
 		return pred

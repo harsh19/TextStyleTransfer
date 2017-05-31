@@ -86,7 +86,7 @@ class Solver:
 				self.token_output_sequences_decoder_inpmatch_placeholder_list = self.model_obj.token_output_sequences_decoder_inpmatch_placeholder_list
 		else:
 			encoder_outputs = self.model_obj.getEncoderModel(config, mode='inference', reuse=reuse)
-			self.decoder_outputs_inference, self.encoder_outputs = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, 	mode='inference', reuse=False)
+			self.decoder_outputs_inference, self.encoder_outputs, self.alpha_inference = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, 	mode='inference', reuse=False)
 
 			if configuration.use_pointer:
 				self.beamSearchInit(config)
@@ -205,7 +205,7 @@ class Solver:
 		feed_dct={model_obj.token_lookup_sequences_placeholder_inference:encoder_inputs}
 		batch_size = config['batch_size'] #x_test.shape[0]
 		if typ=="greedy":
-			decoder_outputs_inference, encoder_outputs = np.array( sess.run([self.decoder_outputs_inference, self.encoder_outputs], feed_dict= feed_dct) ) # timesteps, N
+			decoder_outputs_inference, encoder_outputs, alpha_inference = np.array( sess.run([self.decoder_outputs_inference, self.encoder_outputs, self.alpha_inference], feed_dict= feed_dct) ) # timesteps, N
 			encoder_outputs = np.array(encoder_outputs)
 			decoder_outputs_inference = np.transpose(decoder_outputs_inference) # (N,timesteps)
 			if print_all:
