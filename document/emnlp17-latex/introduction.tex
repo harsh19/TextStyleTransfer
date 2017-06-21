@@ -1,0 +1,133 @@
+\section{Introduction}
+
+%Motivation for style transfer
+
+% Style. Prior works
+Transforming style of text can be considered as application of lexical (e.g. using a synonym) and grammatical transformations (e.g. active vs passive voice). However, stylistic variations of a text, in contrast to machine translation, share significant amount of lexical and grammatical properties. 
+
+% introduce task and data specifically. shakespeare. TO DO
+
+%Challenges
+%Our problem becomes somewhat more challenging since the source and target side differ not only in domain (lines from the play written in dramatic style vs. paraphrases for high school students) but also in the language itself - since the Shakespearean plays are written in Early Modern English - a diachronically disparate variant of Modern English used in the Elizabethan Era. Although Early Modern English is not considered sufficiently distinct to be classified as a different language (unlike \textit{Old English} and \textit{Middle English}). 
+
+
+% Example predictions and data
+\begin{table}
+\centering
+\tiny
+%\begin{center}
+%\scriptsize
+\addtolength{\tabcolsep}{-4pt}
+\begin{tabular}{|l|l|l| }
+\hline 
+No & Type  & Text \\ \hline \hline
+\multirow{3}{*}{1} &  \textsc{Original} & Fie, how my bones ache ! \\
+&  \textsc{Modern} & Oh my, my bones ache so much  \\
+& \textsc{Copy} & fie, how my bones ache ! \\  
+& \textsc{SimpleS2S} & you'll be, sir, what the bones are tired . \\
+& \textsc{Stat} & Oh my, my bones ache so much . \\ \hline \hline
+\multirow{3}{*}{2} &  \textsc{Original} & I stand on sudden haste . \\
+& \textsc{Modern} & I am in a rush .  \\
+& \textsc{Copy} & i stand on sudden haste . \\  
+& \textsc{SimpleS2S} & i'm stand right here . \\
+& \textsc{Stat} & I am in a Fly \\ \hline \hline
+\multirow{3}{*}{3} &  \textsc{Original} & Commend me to thy lady \\
+&  \textsc{Modern} & Give my compliments to your lady  \\
+& \textsc{Copy} & commend me to your lady \\  
+& \textsc{SimpleS2S} & give my regards to your lady \\
+& \textsc{Stat} & give my praises to your lady \\ \hline \hline
+\multirow{3}{*}{4} &  \textsc{Original} & Well sir, my mistress is the sweetest lady, Lord, Lord! \\
+&  \textsc{Modern} & Well, sir, my mistress is the sweetest lady  \\
+& \textsc{Copy} & well sir, my mistress is the sweetest , my lord, lord \\  
+& \textsc{SimpleS2S} & well, my mistress, my mistress is the wonderful wind, lord \\
+& \textsc{Stat} & well, sir, my mistress is the sweetest lady \\ \hline \hline
+\multirow{3}{*}{5} &  \textsc{Original} & Mercy but murders, pardoning those that kill . \\
+&  \textsc{Modern} & Showing mercy by pardoning killers only causes more murders .  \\
+& \textsc{Copy} & mercy but murders, those those who kill us . \\  
+& \textsc{SimpleS2S} & but except the murders to those murders to kill you . \\
+& \textsc{Stat} & of mercy by pardoning killers causes more dire. \\ \hline \hline
+\multirow{3}{*}{6} &  \textsc{Original} & Holy Saint Francis, what a change is here ! \\
+& \textsc{Modern} & Holy Saint Francis, this is a drastic change !  \\
+& \textsc{Copy} & holy saint francis, what a change is here ! \\  
+& \textsc{SimpleS2S} & it's the holy flute, what's the changed ! \\
+& \textsc{Stat} & Holy Saint Francis, this is a drastic change ! \\ \hline \hline
+\multirow{3}{*}{7} &  \textsc{Original} & Was that my father that went hence so fast ?  \\
+&  \textsc{Modern} & was that my father who left here in such a hurry ?  \\
+& \textsc{Copy} & was that my father that went went so fast ? \\  
+& \textsc{SimpleS2S} & was that my father was so that ? \\
+& \textsc{Stat} & was that my father that left here in such a haste ? \\ 
+\hline \hline
+\multirow{3}{*}{8} &  \textsc{Original} & One kiss, and I'll descend .  \\
+& \textsc{Modern} & Give me one kiss and I'll go down .  \\
+& \textsc{Copy} & one kiss me, and I'll descend . \\  
+& \textsc{SimpleS2S} & one kiss,and I come down . \\
+& \textsc{Stat} & Give me a kiss, and I'll go down . \\ \hline \hline
+\multirow{3}{*}{9} &  \textsc{Original} & Then, window, let day in and life out .  \\
+&  \textsc{Modern} &  then the window lets day in, and life goes out the window .  \\
+& \textsc{Copy} & then, window out, and day life . \\  
+& \textsc{SimpleS2S} & then she is just a life of life, let me life out of life . \\
+& \textsc{Stat} & then the window will let day in, and life out . \\ \hline
+\hline
+\end{tabular}
+%\end{center}
+\caption{Examples from dataset showing modern paraphrases (\textsc{Modern}) of few sentences from Shakespeare's plays (\textsc{Original}). We also show transformation of modern text to Shakespearean text from our models (\textsc{Copy}, \textsc{SimpleS2S} and \textsc{Stat}).}
+\label{tab:intro}
+\end{table}
+
+Unlike traditional domain or style transfer, our task is made more challenging by the fact that the two styles employ diachronically disparate registers of English - one style uses the contemporary language while the other uses \textit{Early Modern English \footnote{\url{http://tinyurl.com/otuqynl}}} from the \textit{Elizabethan Era} (1558-1603). Although \textit{Early Modern English} is not classified as a different language (unlike \textit{Old English} and \textit{Middle English}), it does have novel words (\textit{acknown} and \textit{belike}), novel grammatical constructions (two \textit{second person} forms - \textit{thou} (informal) and \textit{you} (formal) \cite{brown1960pronouns}), semantically drifted senses (e.g \textit{fetches} is a synonym of \textit{excuses}) and non-standard orthography \cite{rayson2007tagging}. Note that this is not the sole difference between the two styles - there is also a domain difference since the Shakespearean play sentences are from a drama whereas the Sparknotes paraphrases are meant to be simplified explanation for high-school students. For brevity and clarity of exposition, we henceforth refers to the \textit{Shakespearean} sentences/side as \textit{Original} and the modern English paraphrases as \textit{Modern}.
+
+% Prior
+Prior works in this field leverage language model for target style, achieving transformation either using phrase tables \cite{xu2012paraphrasing}, or by inserting relevant adjectives and adverbs \cite{saha2015automated}. Such works have limited accuracy and scope in the type of  transformations that can be achieved. Moreover, statistical and rule MT based systems do not provide a direct mechanism to a) share word representation information between source and target sides b) incorporating constraints between words into word representations in end-to-end fashion. Neural sequence-to-sequence models however provide direct mechanisms to handle all of these - Sharing source and target embeddings to share word-representation information, pretraining to leverage external information, and adding constraints to word representations using \cite{faruqui2014retrofitting}.
+
+% Summary of method and results
+
+% Contributions. TO DO
+Our main contributions are as follows:
+\begin{itemize}
+    \item We use a sentence level sequence to sequence neural model with a pointer network component to enable direct copying of words from input. We demonstrate that this method performs much better than prior phrase translation based approaches for transforming \textit{Modern} English text to \emph{Shakespearean} English. 
+    \item We pre-train word embedding considering external dictionary of words. The pretrained embedding enable our model to learn to transform text from small amount of parallel data. 
+\end{itemize}
+
+%REst of the paper
+Rest of the paper is organized as follows. We first provide a brief analysis of our dataset in  (\S\ref{sec:Dataset}). We then elaborate on details of our methods in  (\S\ref{sec:Method}, \S\ref{sec:Method2}, \S\ref{sec:Method3}, \S\ref{sec:Method4}). We then discuss experimental setup and baselines in (\S\ref{sec:Experiments}). Thereafter, we discuss the results and observations in (\S \ref{sec:Results}). We conclude with discussions on related work (\S \ref{sec:RelatedWord}) and future directions (\S \ref{sec:Conclusion}).
+
+
+
+\section{Dataset} \label{sec:Dataset}% needed before method to motivate the importance of pretrained embeddings etc.
+
+Our dataset is a collection of line-by-line modern paraphrases for 16 of Shakespeare's 36 plays (\textit{Antony \& Cleopatra}, \textit{As You Like It}, \textit{Comedy of Errors}, \textit{Hamlet}, \textit{Henry V} etc) from the educational site \textit{Sparknotes}\footnote{\url{www.sparknotes.com}}.
+This dataset was compiled by Xu et al. \shortcite{xu2014data,xu2012paraphrasing} and is freely available on github.\footnote{ \url{http://tinyurl.com/ycdd3v6h}}
+
+14 plays covering 18,395 sentences form the training data split. We kept 1218 sentences from the play \emph{Twelfth Night} as validation data set. The last play, \emph{Romeo and Juliet}, comprising of 1462 sentences, forms the test set.
+
+\subsection{Analysis}
+Table \ref{tab:profile} shows some type and token statistics from the training split of the dataset. In general, the \textit{Original} side has longer sentences and a larger vocabulary. The slightly higher entropy of the \textit{Original} side's frequency distribution indicates that the frequencies are more spread out over words. Intuitively, the large number of shared word types indicates that sharing the representation between \textit{Original} and \textit{Modern} sides could provide some benefit.
+
+%Table \ref{tab:intro} presents model outputs for some test examples.  
+\begin{table}
+\centering
+\scriptsize
+%\begin{center}
+%\scriptsize
+\addtolength{\tabcolsep}{-2pt}
+\begin{tabular}{|l|l|l| }
+\hline 
+{} & \textit{Original}  & \textit{Modern} \\ \hline \hline
+$\#$ Word Tokens & 217K & 200K \\ \hline
+$\#$ Word Types & 12.39K  & 10.05K \\ \hline
+Average Sentence Length & 11.81  & 10.91 \\ \hline
+Entropy (Type.Dist) & 6.15 & 6.06 \\ \hline
+%Top-5 Types &  Shakespeare-Original & I stand on sudden haste \\ \hline
+$\cap$ Word Types       & \multicolumn{2}{|l|}{6.33K} \\%& 6.33K \\
+\hline \hline
+\end{tabular}
+%\end{center}
+\caption{Dataset Statistics}
+\label{tab:profile} 
+\end{table}
+
+
+\subsection{Examples}
+Table \ref{tab:intro} shows some parallel pairs from the test split of our data, along with the corresponding target outputs from some of our models. \textit{Copy} and \textit{SimpleS2S} refer to our best performing attentional S2S models with and without a \textit{Copy} component respectively. \textit{Stat} refers to the best statistical machine translation baseline using off-the-shelf GIZA++ aligner and MOSES. We can see through many of the examples how direct copying from the source side helps the \textit{Copy} generates better outputs than the \textit{SimpleS2S}. The approaches are described in greater detail in (\S\ref{sec:Method}) and (\S\ref{sec:Experiments}).
+
+
