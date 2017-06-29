@@ -1,0 +1,215 @@
+%\title{emnlp 2017 instructions}
+% File emnlp2017.tex
+%
+
+\documentclass[11pt,letterpaper]{article}
+\usepackage{emnlp2017}
+\usepackage{times}
+\usepackage{latexsym}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{minted}
+\usepackage{mathtools}
+\usepackage{subcaption}
+\usepackage{caption}
+\usepackage{xcolor}
+\usepackage{multirow}
+\usepackage{amssymb}
+\usepackage{bm}
+
+% Uncomment this line for the final submission:
+%\emnlpfinalcopy
+
+%  Enter the EMNLP Paper ID here:
+\def\emnlppaperid{4}
+
+% To expand the titlebox for more authors, uncomment
+% below and set accordingly.
+% \addtolength\titlebox{.5in}    
+
+\newcommand\BibTeX{B{\sc ib}\TeX}
+
+
+\title{Appendix - Shakespearizing Modern Language Using Copy-Enriched Sequence-to-Sequence Models}
+
+% Author information can be set in various styles:
+% For several authors from the same institution:
+% \author{Author 1 \and ... \and Author n \\
+%         Address line \\ ... \\ Address line}
+% if the names do not fit well on one line use
+%         Author 1 \\ {\bf Author 2} \\ ... \\ {\bf Author n} \\
+% For authors from different institutions:
+% \author{Author 1 \\ Address line \\  ... \\ Address line
+%         \And  ... \And
+%         Author n \\ Address line \\ ... \\ Address line}
+% To start a seperate ``row'' of authors use \AND, as in
+% \author{Author 1 \\ Address line \\  ... \\ Address line
+%         \AND
+%         Author 2 \\ Address line \\ ... \\ Address line \And
+%         Author 3 \\ Address line \\ ... \\ Address line}
+% If the title and author information does not fit in the area allocated,
+% place \setlength\titlebox{<new height>} right after
+% at the top, where <new height> can be something larger than 2.25in
+\author{Varun Gangal \and Harsh Jhamtani \and Graham Neubig \and Eduard Hovy \and Eric Nyberg \\
+  {\tt publication@emnlp2017.net}}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+    This document contains additional information to complement the descriptions and findings reported in the paper, as well as a guide to the supplementary material.
+  %This document contains auxiliary information that had to be omitted out of the final paper, as well as a guide to the supplementary material.
+\end{abstract}
+
+\section{Code}
+In the final submission, we will share a link to our github repository for this paper. To not violate double blind submission guidelines, we do not link to it here. 
+
+We do however, provide an (anonymous shareable) Google Drive link\footnote{The file size prevents us from sharing directly as supplmentary material.} of our code, available at \url{http://tinyurl.com/y8z4x25q}. The file is named \textit{TextStyleTransfer.zip}. On unzipping the file, a directory named \textit{TextStyleTransfer/} is created. The root of the directory has suitable running instructions in the form of an included \textit{README.MD}. The directory \textit{code/} contains the code and the directory \textit{data/} contains the data. The code is largely self-contained in terms of data, except that library prerequisites must be met.
+
+
+%https://drive.google.com/file/d/0B0TyOlDKtSZJcnoxTkdFSHM5ak0/view?usp=sharing
+\section{Statistical Baselines}
+Statistical Machine Translation (SMT) methods uses a noisy-channel formulation to split $P(t|s)$ (distribution over target sequences given source sequence) as
+\begin{align*}
+    argmax P(t|s) &= argmax P(s|t) P(t)
+\end{align*}
+$P(s|t)$ is referred to as the alignment model and $P(t)$ as the language model (LM). These models are generally trained independently - the alignment model on the parallel data and the language model on the target side of parallel data (and optionally, additional target-side monolingual data). At test time, each model is represented as a FST and the composition of these FSTs is used for decoding (finding best target sentence). In order to have a finite FST, $P(t)$ has to be a classical N-gram language model. (since neural models such as RNNLMs cannot be represented as FSTs)
+
+
+In our case, a direct way of incorporating the dictionary $L$ is to add the pairs from $L$ to our parallel data while learning the alignment model $P(s|t)$. A direct way of incorporating the external data (\textit{PTB}), is to use it while training $P(t)$. Another potential enhancement is to use the source side sentences (in addition to target side sentences) while training. We train several models (described below) ablating for the use of each of these enhancements. Models 1-5\footnote{Not to be confused with the canonical IBM SMT models such as IBM Model 1, IBM Model 3 etc. The nomenclature is unrelated.} experiment with the LM while using only the given parallel pairs for training. Models 6-9 use on of the LMs from Model 1-5 while using additional pairs from $L$ while training $P(s|t)$
+
+\begin{enumerate}
+    \item \textbf{Model 1}: This model is the simplest. $P(s|t)$ is learnt on parallel sentences and the 3-gram LM $P(t)$ is learnt on target-side training sentences. It does not use $L$ or $PTB$ in any way.
+    \item \textbf{Model 2}: This model is same as \textbf{Model 1}, except that it uses a 4-gram LM.
+    \item \textbf{Model 3}: Similar to \textbf{Model 2}, except that \textit{PTB} sentences are used while training $P(t)$
+    \item \textbf{Model 4}: Similar to \textbf{Model 2}, except that source side sentences are used to train $P(t)$
+    \item \textbf{Model 5}: Similar to \textbf{Model 2}, except that both source side sentences and \textit{PTB} sentences are used to train P(t).
+    \item \textbf{Model 6}: $P(t)$ is trained similar to \textbf{Model 5}. $L$ is used additionally while training $P(s|t)$.
+    \item \textbf{Model 7}: $P(t)$ is trained similar to \textbf{Model 2}, $L$ is used additionally while training. 
+    \item \textbf{Model 8}: $P(t)$ is trained similar to \textbf{Model 3}, $L$ is used additionally while training.
+    \item \textbf{Model 9}: $P(t)$ is trained similar to \textbf{Model 4}, $L$ is used additionally while training.
+\end{enumerate}
+
+\section{Complete Results Table}
+\begin{table}
+\centering
+\scriptsize
+%\begin{center}
+%\scriptsize
+\addtolength{\tabcolsep}{-2pt}
+\begin{tabular}{|l|l|l|l| }
+\hline 
+Model & Sh  & Init  & BLEU (PINC) \\ \hline \hline
+\textsc{As-it-is}  & {-} & {-}  &  {21.13} (0.0)  \\ \hline
+\textsc{Dictionary}  & {-} & {-}  &  {17} (26.64)  \\ \hline
+\textsc{Stat} (Model 1)  & {-} & {-}  &  {22.26} (28.34)  \\ \hline
+\textsc{Stat} (Model 2)  & {-} & {-}  &  {24.17} (28.14)   \\ \hline
+\textsc{Stat} (Model 3)  & {-} & {-}  &  {24.10} (25.86)   \\ \hline
+\textsc{Stat} (Model 4)  & {-} & {-}  &  {23.76} (25.86)   \\ \hline
+\textsc{Stat} (Model 5)  & {-} & {-}  &  {23.87} (21.85)   \\ \hline
+\textsc{Stat} (Model 6)  & {-} & {-}  &  {23.81} (23.60)    \\ \hline
+\textsc{Stat} (Model 7)   & {-} & {-}  &  \textbf{24.39} (32.30)    \\ \hline
+\textsc{Stat} (Model 8)  & {-} & {-}  &  {24.21} (30.05)    \\ \hline
+\textsc{Stat} (Model 9)  & {-} & {-}  &  {23.73} (23.48)   \\ \hline
+\multirow{10}{*}{\textsc{SimpleS2S}} &  $\times$ & $NoneVar$ & 11.66 (85.61) \\
+%$\times$ & $NONEVAR$ & 9.33 \\
+%&  $\times$ & $PLAINVAR$ & 8.73 \\
+&  $\times$ & $PlainVar$ & 9.27 (86.52) \\
+ & $\times$ & $PlainExtVar$  & 8.73 (87.17) \\ 
+ & $\times$ & $RetroVar$ &  10.57 (85.06) \\ 
+ %& $\times$ & $RETROEXTVAR$  & 10.05 \\
+& $\times$ & $RetroExtVar$  & 10.26 (83.83) \\ 
+% & $\checkmark$ & $NONEVAR$ &  10.51 \\
+& $\checkmark$ & $NoneVar$ &  11.17 (84.91) \\
+% & $\checkmark$ & $PLAINVAR$ &  8.82 \\
+ & $\checkmark$ & $PlainVar$ &  8.78 (85.57) \\
+% & $\checkmark$ & $PLAINFIXED$ &  8.83\\
+ & $\checkmark$ & $PlainFixed$ &  8.73 (89.19)\\
+ %& $\checkmark$ & $PLAINEXTVAR$  & 9.18 \\
+ & $\checkmark$ & $PlainExtVar$  & 8.59 (86.04) \\
+ %& $\checkmark$ & $PLAINEXTFIXED$  & 9.20 \\
+ & $\checkmark$ & $PlainExtFixed$  & 8.59 (89.16) \\
+ %& $\checkmark$ & $RETROVAR$ &  10.56 \\
+ & $\checkmark$ & $RetroVar$ &  10.86 (85.58) \\
+ %& $\checkmark$ & $RETROFIXED$ &  10.54 \\
+ & $\checkmark$ & $RetroFixed$ &  11.36 (85.07) \\
+ %& $\checkmark$ & $RETROEXTVAR$  & 9.96 \\
+ & $\checkmark$ & $RetroExtVar$  & 11.25 (83.56) \\
+ %& $\checkmark$ & $RETROEXTFIXED$  & \textbf{9.96} \\  
+ & $\checkmark$ & $RetroExtFixed$  & \textbf{10.86} (88.80) \\  \hline
+\multirow{6}{*}{\textsc{Copy}} & $\times$ & $NoneVar$ & 18.44 (83.68) \\
+%& $\times$ & $NONEVAR$ & 21.31 \\
+% & $\times$ & $PLAINVAR$ & 19.52 \\
+ & $\times$ & $PlainVar$ & 20.26 (81.54) \\ %f
+ %& $\times$ & $PLAINEXTVAR$  & 18.11 \\ 
+ & $\times$ & $PlainExtVar$  & 20.20 (83.38)\\ 
+ %& $\times$ & $RETROVAR$ &  21.36 \\
+ & $\times$ & $RetroVar$ &  21.25 (81.18) \\
+ %& $\times$ & $RETROEXTVAR$  & 20.10 \\
+ & $\times$ & $RetroExtVar$  & 21.57 (82.89) \\
+ %& $\checkmark$ & $NONEVAR$ &  23.01 \\
+  & $\checkmark$ & $NoneVar$ &  22.70 (81.51) \\
+ %& $\checkmark$ & $PLAINVAR$ &  20.95 \\ 
+ & $\checkmark$ & $PlainVar$ &  19.27 (83.87) \\ 
+ %& $\checkmark$ & $PLAINFIXED$ &  23.56 \\
+ & $\checkmark$ & $PlainFixed$ &  21.20 (81.61) \\
+ %& $\checkmark$ & $PLAINEXTVAR$  & 20.33 \\
+ & $\checkmark$ & $PlainExtVar$  & 20.76 (83.17) \\
+% & $\checkmark$ & $PLAINEXTFIXED$  & 21.67 \\
+ & $\checkmark$ & $PlainExtFixed$  & 19.32 (82.38) \\
+ %& $\checkmark$ & $RETROVAR$ &  20.90 \\
+ & $\checkmark$ & $RetroVar$ &  22.71 (81.12) \\
+% & $\checkmark$ & $RETROFIXED$ &  \textbf{28.80} \\
+ & $\checkmark$ & $RetroFixed$ &  \textbf{28.86} (80.53) \\
+ %& $\checkmark$ & $RETROEXTVAR$  & 22.61 \\
+ & $\checkmark$ & $RetroExtVar$  & 20.95 (81.94) \\
+ %& $\checkmark$ & $RETROEXTFIXED$  & \textbf{30.42} (81.13) \\
+ %& $\checkmark$ & $RETROEXTFIXED,192$  & \textbf{31.02} (80.62) \\
+ %& $\checkmark$ & $RETROEXTFIXED,256$  & \textbf{31.06} (80.69) \\
+ & $\checkmark$ & $RetroExtFixed$  & \textbf{31.12} (79.63) \\
+ %& $\checkmark$ & $RETROEXTFIXED-L,128$  & \textbf{27.86} (0.0) \\
+ %& $\checkmark$ & $RETROEXTFIXED-L,192$  & \textbf{28.38} (0.0) \\
+ %& $\checkmark$ & $RETROEXTFIXED-L,256$  & \textbf{29.37} (0.0) \\
+ \hline
+\multirow{6}{*}{\textsc{Copy+SL}} & $\times$ & $NoneVar$ & 17.88 (83.70) \\
+& $\times$ & $PlainVar$ & 20.22 (81.52) \\
+ & $\times$ & $PlainExtVar$  & 20.14 (83.46) \\   
+ & $\times$ & $RetroVar$ &  21.30 (81.22) \\ 
+ & $\times$ & $RetroExtVar$  & 21.52 (82.86) \\ 
+ & $\checkmark$ & $NoneVar$ &  22.72 (81.41) \\
+ & $\checkmark$ & $PlainVar$ &  21.46 (81.39) \\ 
+ %& $\checkmark$ & $PLAINFIXED$ &  23.76 \\
+ & $\checkmark$ & $PlainFixed$ &  23.76 (81.68) \\
+ %& $\checkmark$ & $PLAINEXTVAR$  & 0.0 \\
+ & $\checkmark$ & $PlainExtVar$  & 20.68 (83.18) \\
+ %& $\checkmark$ & $PLAINEXTFIXED$  & 21.59 \\
+ & $\checkmark$ & $PlainExtFixed$  & 22.23 (81.71) \\
+ & $\checkmark$ & $RetroVar$ &  22.62 (81.15) \\ 
+ %& $\checkmark$ & $RETROFIXED$ &  28.60 \\
+ & $\checkmark$ & $RetroFixed$ &  27.66 (81.35) \\
+ & $\checkmark$ & $RetroExtVar$  & 24.11 (79.92) \\ 
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=2$  & \textbf{11.51} \\ 
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=0.25$  & \textbf{25.54} \\
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=0.025$  & 30.03 \\
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=0.0125$  & 30.12 \\
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=0.0075$  & 0.0 \\
+ %& $\checkmark$ & $RETROEXTFIXED$  & 30.34 \\
+ & $\checkmark$ & $RetroExtFixed$  & 27.81 (84.67) \\
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=0.0025$  & 30.30 \\
+ \hline 
+\end{tabular}
+%\end{center}
+\caption{Test BLEU results. \emph{Sh} denotes encoder-decoder embedding sharing. \emph{Init} denotes the manner of initializing embedding vectors. The \emph{-Fixed} or \emph{-Var} suffix indicates whether embeddings are fixed or trainable. \textsc{COPY} and \textsc{SIMPLES2S} denote presence/absence of \textit{Copy} component. \textsc{+SL} denotes sentinel loss.}
+\textbf{\label{tab:knightExp}}
+\end{table}
+
+
+
+
+%\bibliography{emnlp2017}
+%\bibliographystyle{emnlp_natbib}
+
+\end{document}

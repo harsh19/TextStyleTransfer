@@ -1,0 +1,122 @@
+\section{Conclusion} \label{sec:Conclusion}
+We demonstrate automatic approaches to transform Modern English text to Shakespearean English. Our work provides insights on the utility of incorporating input-copying, embedding sharing and dictionary constraints for problems with shared (but non-identical) source-target sides and sparse parallel data. We also release our code for further research on this and related tasks\footnote{Linked to in supp.material to preserve anonymity}.
+
+Sparknotes also provides similar translations to Modern English for \textit{Beowulf} \footnote{\url{tinyurl.com/d5ntme7}} (Old English) and \textit{Canterbury Tales}  (Middle English).  A point of future work would be develop similar models to translate to these styles/languages. An additional extension would be to develop a single encoder-decoder model for translation to any diachronic English style, in the manner of \cite{johnson2016google}.
+
+%\footnote{\url{http://tinyurl.com/ya9sd4k}}
+
+\begin{table}
+\centering
+\scriptsize
+%\begin{center}
+%\scriptsize
+\addtolength{\tabcolsep}{-2pt}
+\begin{tabular}{|l|l|l|l| }
+\hline 
+Model & Sh  & Init  & BLEU (PINC) \\ \hline \hline
+\textsc{As-it-is}  & {-} & {-}  &  {21.13} (0.0)  \\ \hline
+\textsc{Dictionary}  & {-} & {-}  &  {17.00} (26.64)  \\ \hline
+%\textsc{GIZA++} (3LM)  & {-} & {-}  &  {22.26} (28.34)  \\ \hline
+%\textsc{GIZA++} (4LM)  & {-} & {-}  &  {24.17} (28.14)   \\ \hline
+%\textsc{GIZA++} (4LM.3)  & {-} & {-}  &  {24.10} (25.86)   \\ \hline
+%\textsc{GIZA++} (4LM.4)  & {-} & {-}  &  {23.76} (25.86)   \\ \hline
+%\textsc{GIZA++} (4LM.5)  & {-} & {-}  &  {23.87} (21.85)   \\ \hline
+%\textsc{GIZA++} (4LM.6)  & {-} & {-}  &  {23.81} (23.60)    \\ \hline
+\textsc{Stat}   & {-} & {-}  &  \textbf{24.39} (32.30)    \\ \hline
+%\textsc{GIZA++} (4LM.8)  & {-} & {-}  &  {24.21} (30.05)    \\ \hline
+%\textsc{GIZA++} (4LM.9)  & {-} & {-}  &  {23.73} (23.48)   \\ \hline
+\multirow{10}{*}{\textsc{SimpleS2S}} &  $\times$ & $NoneVar$ & 11.66 (85.61) \\
+%$\times$ & $NONEVAR$ & 9.33 \\
+%&  $\times$ & $PLAINVAR$ & 8.73 \\
+&  $\times$ & $PlainVar$ & 9.27 (86.52) \\
+ & $\times$ & $PlainExtVar$  & 8.73 (87.17) \\ 
+ & $\times$ & $RetroVar$ &  10.57 (85.06) \\ 
+ %& $\times$ & $RETROEXTVAR$  & 10.05 \\
+& $\times$ & $RetroExtVar$  & 10.26 (83.83) \\ 
+% & $\checkmark$ & $NONEVAR$ &  10.51 \\
+& $\checkmark$ & $NoneVar$ &  11.17 (84.91) \\
+% & $\checkmark$ & $PLAINVAR$ &  8.82 \\
+ & $\checkmark$ & $PlainVar$ &  8.78 (85.57) \\
+% & $\checkmark$ & $PLAINFIXED$ &  8.83\\
+ & $\checkmark$ & $PlainFixed$ &  8.73 (89.19)\\
+ %& $\checkmark$ & $PLAINEXTVAR$  & 9.18 \\
+ & $\checkmark$ & $PlainExtVar$  & 8.59 (86.04) \\
+ %& $\checkmark$ & $PLAINEXTFIXED$  & 9.20 \\
+ & $\checkmark$ & $PlainExtFixed$  & 8.59 (89.16) \\
+ %& $\checkmark$ & $RETROVAR$ &  10.56 \\
+ & $\checkmark$ & $RetroVar$ &  10.86 (85.58) \\
+ %& $\checkmark$ & $RETROFIXED$ &  10.54 \\
+ & $\checkmark$ & $RetroFixed$ &  11.36 (85.07) \\
+ %& $\checkmark$ & $RETROEXTVAR$  & 9.96 \\
+ & $\checkmark$ & $RetroExtVar$  & 11.25 (83.56) \\
+ %& $\checkmark$ & $RETROEXTFIXED$  & \textbf{9.96} \\  
+ & $\checkmark$ & $RetroExtFixed$  & \textbf{10.86} (88.80) \\  \hline
+\multirow{6}{*}{\textsc{Copy}} & $\times$ & $NoneVar$ & 18.44 (83.68) \\
+%& $\times$ & $NONEVAR$ & 21.31 \\
+% & $\times$ & $PLAINVAR$ & 19.52 \\
+ & $\times$ & $PlainVar$ & 20.26 (81.54) \\ %f
+ %& $\times$ & $PLAINEXTVAR$  & 18.11 \\ 
+ & $\times$ & $PlainExtVar$  & 20.20 (83.38)\\ 
+ %& $\times$ & $RETROVAR$ &  21.36 \\
+ & $\times$ & $RetroVar$ &  21.25 (81.18) \\
+ %& $\times$ & $RETROEXTVAR$  & 20.10 \\
+ & $\times$ & $RetroExtVar$  & 21.57 (82.89) \\
+ %& $\checkmark$ & $NONEVAR$ &  23.01 \\
+  & $\checkmark$ & $NoneVar$ &  22.70 (81.51) \\
+ %& $\checkmark$ & $PLAINVAR$ &  20.95 \\ 
+ & $\checkmark$ & $PlainVar$ &  19.27 (83.87) \\ 
+ %& $\checkmark$ & $PLAINFIXED$ &  23.56 \\
+ & $\checkmark$ & $PlainFixed$ &  21.20 (81.61) \\
+ %& $\checkmark$ & $PLAINEXTVAR$  & 20.33 \\
+ & $\checkmark$ & $PlainExtVar$  & 20.76 (83.17) \\
+% & $\checkmark$ & $PLAINEXTFIXED$  & 21.67 \\
+ & $\checkmark$ & $PlainExtFixed$  & 19.32 (82.38) \\
+ %& $\checkmark$ & $RETROVAR$ &  20.90 \\
+ & $\checkmark$ & $RetroVar$ &  22.71 (81.12) \\
+% & $\checkmark$ & $RETROFIXED$ &  \textbf{28.80} \\
+ & $\checkmark$ & $RetroFixed$ &  \textbf{28.86} (80.53) \\
+ %& $\checkmark$ & $RETROEXTVAR$  & 22.61 \\
+ & $\checkmark$ & $RetroExtVar$  & 20.95 (81.94) \\
+ %& $\checkmark$ & $RETROEXTFIXED$  & \textbf{30.42} (81.13) \\
+ %& $\checkmark$ & $RETROEXTFIXED,192$  & \textbf{31.02} (80.62) \\
+ %& $\checkmark$ & $RETROEXTFIXED,256$  & \textbf{31.06} (80.69) \\
+ & $\checkmark$ & $RetroExtFixed$  & \textbf{31.12} (79.63) \\
+ %& $\checkmark$ & $RETROEXTFIXED-L,128$  & \textbf{27.86} (0.0) \\
+ %& $\checkmark$ & $RETROEXTFIXED-L,192$  & \textbf{28.38} (0.0) \\
+ %& $\checkmark$ & $RETROEXTFIXED-L,256$  & \textbf{29.37} (0.0) \\
+ \hline
+\multirow{6}{*}{\textsc{Copy+SL}} & $\times$ & $NoneVar$ & 17.88 (83.70) \\
+& $\times$ & $PlainVar$ & 20.22 (81.52) \\
+ & $\times$ & $PlainExtVar$  & 20.14 (83.46) \\   
+ & $\times$ & $RetroVar$ &  21.30 (81.22) \\ 
+ & $\times$ & $RetroExtVar$  & 21.52 (82.86) \\ 
+ & $\checkmark$ & $NoneVar$ &  22.72 (81.41) \\
+ & $\checkmark$ & $PlainVar$ &  21.46 (81.39) \\ 
+ %& $\checkmark$ & $PLAINFIXED$ &  23.76 \\
+ & $\checkmark$ & $PlainFixed$ &  23.76 (81.68) \\
+ %& $\checkmark$ & $PLAINEXTVAR$  & 0.0 \\
+ & $\checkmark$ & $PlainExtVar$  & 20.68 (83.18) \\
+ %& $\checkmark$ & $PLAINEXTFIXED$  & 21.59 \\
+ & $\checkmark$ & $PlainExtFixed$  & 22.23 (81.71) \\
+ & $\checkmark$ & $RetroVar$ &  22.62 (81.15) \\ 
+ %& $\checkmark$ & $RETROFIXED$ &  28.60 \\
+ & $\checkmark$ & $RetroFixed$ &  27.66 (81.35) \\
+ & $\checkmark$ & $RetroExtVar$  & 24.11 (79.92) \\ 
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=2$  & \textbf{11.51} \\ 
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=0.25$  & \textbf{25.54} \\
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=0.025$  & 30.03 \\
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=0.0125$  & 30.12 \\
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=0.0075$  & 0.0 \\
+ %& $\checkmark$ & $RETROEXTFIXED$  & 30.34 \\
+ & $\checkmark$ & $RetroExtFixed$  & 27.81 (84.67) \\
+ %& $\checkmark$ & $RETROEXTFIXED,\lambda=0.0025$  & 30.30 \\
+ \hline 
+\end{tabular}
+%\end{center}
+\caption{Test BLEU results. \emph{Sh} denotes encoder-decoder embedding sharing (\textit{No}=$\times$,\textit{Yes}=$\checkmark$) . \emph{Init} denotes the manner of initializing embedding vectors. The \emph{-Fixed} or \emph{-Var} suffix indicates whether embeddings are fixed or trainable. \textsc{COPY} and \textsc{SIMPLES2S} denote presence/absence of \textit{Copy} component. \textsc{+SL} denotes sentinel loss.}
+\textbf{\label{tab:knightExp}}
+\end{table}
+
+%Training on monolingual corpora in Early Modern English, and also experiment with noisy-channel like neural models \cite{yu2016neural}, which directly factor in a language model like traditional SMT, but with additional benefits of embedding approaches.
+
+%\textit{COPY} and \textit{SIMPLES2S} denote attentional S2S models with/without a copy component respectively, while \textit{+SL} denotes usage of sentinel loss.
