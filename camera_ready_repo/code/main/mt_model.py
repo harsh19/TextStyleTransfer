@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from utilities import OutputSentence, TopN
 import utilities
-	
+from tensorflow.contrib import rnn	
 
 class RNNModel:
 

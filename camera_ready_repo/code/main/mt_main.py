@@ -29,7 +29,7 @@ print usage
 print ""
 ########################
 
-data_src = config.data_src
+data_src = config.data_dir
 
 def main():
 	

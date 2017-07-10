@@ -74,10 +74,10 @@ class Solver:
 				self.token_output_sequences_decoder_inpmatch_placeholder_list = self.model_obj.token_output_sequences_decoder_inpmatch_placeholder_list
 		else:
 			encoder_outputs = self.model_obj.getEncoderModel(config, mode='inference', reuse=reuse)
-			self.decoder_outputs_inference, self.encoder_outputs, self.alpha_inference = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, mode='inference', reuse=False)
+			self.decoder_outputs_inference, self.encoder_outputs, self.alpha_inference = self.model_obj.getDecoderModel(config, encoder_outputs, is_training=False, mode='inference', reuse=False )
 
-			if configuration.use_pointer:
-				self.beamSearchInit(config)
+			#if configuration.use_pointer:
+			#	self.beamSearchInit(config)
 
 	def trainModel(self, config, train_feed_dict, val_feed_dct, reverse_vocab, do_init=True):
 		
@@ -165,7 +165,8 @@ class Solver:
 				if step % sample_step == 0:
   					self.runInference( config, encoder_inputs[:batch_size], decoder_outputs[:batch_size], reverse_vocab, sess )
 				if step%save_step==0:
-					save_path = saver.save(sess, "./tmp/" + model_name + str(step) + ".ckpt")
+					# SAVE ALL: save_path = saver.save(sess, "./tmp/" + model_name + str(step) + ".ckpt")
+					save_path = saver.save(sess, "./tmp/" + model_name ".ckpt") # SAVE LATEST
 	  				print "Model saved in file: ",save_path
 				step += 1
 

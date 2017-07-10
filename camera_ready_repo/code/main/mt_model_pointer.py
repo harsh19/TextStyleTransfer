@@ -3,7 +3,7 @@ import tensorflow as tf
 from utilities import OutputSentence, TopN
 import utilities
 import configuration as config
-	
+from tensorflow.contrib import rnn	
 
 class RNNModel:
 
