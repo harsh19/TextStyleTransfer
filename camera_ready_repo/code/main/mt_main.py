@@ -184,6 +184,7 @@ def main():
 		original_data_path = data_src + "valid.original.nltktok"
 		BLEUOutputFile_path = saved_model_path + ".valid.BLEU"
 		utilities.getBlue(validOutFile_name, original_data_path, BLEUOutputFile_path, decoder_outputs_inference, decoder_ground_truth_outputs, preprocessing)
+		print "VALIDATION: ",open(BLEUOutputFile_path,"r").read()		
 
 		#test
 		test_encoder_inputs, test_decoder_inputs, test_decoder_outputs, test_decoder_outputs_matching_inputs = test
@@ -194,6 +195,7 @@ def main():
 		original_data_path = data_src + "test.original.nltktok"
 		BLEUOutputFile_path = saved_model_path + ".test.BLEU"
 		utilities.getBlue(validOutFile_name, original_data_path, BLEUOutputFile_path, decoder_outputs_inference, decoder_ground_truth_outputs, preprocessing)
+		print "TEST: ",open(BLEUOutputFile_path,"r").read()		
 
 	else:
 		print "Please see usage"

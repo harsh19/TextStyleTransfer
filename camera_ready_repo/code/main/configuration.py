@@ -11,12 +11,12 @@ max_vocab_size = 12000
 use_pointer=True 
 
 # model config
-lstm_cell_size=128
-embeddings_dim = 128
+lstm_cell_size=192
+embeddings_dim = 192
 use_reverse_encoder=True
 share_encoder_decoder_embeddings=True
 use_pretrained_embeddings = True
-pretrained_embeddings_path = data_dir + "embeddings/retrofitted_external_128.p"
+pretrained_embeddings_path = data_dir + "embeddings/retrofitted_external_128_startend.p"
 pretrained_embeddings_are_trainable = False  
 use_additional_info_from_pretrained_embeddings = True # if some word is not in training data set but is there in pretrained embeddings: mark True to add such words also. Otherwise mark False
 

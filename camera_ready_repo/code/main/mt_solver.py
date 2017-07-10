@@ -11,6 +11,7 @@ if configuration.use_pointer:
 else:
 	import mt_model as model
 
+data_dir = configuration.data_dir
 	
 class Solver:
 
@@ -165,8 +166,8 @@ class Solver:
 				if step % sample_step == 0:
   					self.runInference( config, encoder_inputs[:batch_size], decoder_outputs[:batch_size], reverse_vocab, sess )
 				if step%save_step==0:
-					# SAVE ALL: save_path = saver.save(sess, "./tmp/" + model_name + str(step) + ".ckpt")
-					save_path = saver.save(sess, "./tmp/" + model_name ".ckpt") # SAVE LATEST
+					save_path = saver.save(sess, "./tmp/" + model_name + str(step) + ".ckpt")
+					# save_path = saver.save(sess, "./tmp/" + model_name + ".ckpt") # SAVE LATEST
 	  				print "Model saved in file: ",save_path
 				step += 1
 
@@ -197,10 +198,11 @@ class Solver:
 					        if val==2: break # sentend. TO DO: load this value from config
 						ret+=( " " + reverse_vocab[val] )
 					#print "decoder_ground_truth_outputs[i] = ",decoder_ground_truth_outputs[i]
-					print "GT: ", [ reverse_vocab[j] for j in decoder_ground_truth_outputs[i]]
+					gt = [ reverse_vocab[j] for j in decoder_ground_truth_outputs[i] if reverse_vocab[j]!="padword"]
+					print "GT: ", gt
 					print "prediction: ",ret
-					print "row= ",row
-					print "matches: ", [ r==x for r,x in zip(row,decoder_ground_truth_outputs[i]) ]
+					#print "row= ",row
+					#print "matches: ", [ r==x for r,x in zip(row,decoder_ground_truth_outputs[i]) ]
 					print ""
 					if i>20:
 						break
@@ -287,7 +289,7 @@ class Solver:
 		val_encoder_inputs, val_decoder_inputs, val_decoder_outputs, val_decoder_outputs_matching_inputs = val_feed
 		decoder_outputs_inference, decoder_ground_truth_outputs = self.solveAll(params, val_encoder_inputs, val_decoder_outputs, reverse_vocab, sess=sess, print_progress=False)        			   
 		validOutFile_name = "./tmp/tmp_" + model_name +".valid.output"
-		original_data_path = "../data/valid.original.nltktok"
+		original_data_path = data_dir + "valid.original.nltktok"
 		BLEUOutputFile_path = "./tmp/tmp_" + model_name + ".valid.BLEU"
 		utilities.getBlue(validOutFile_name, original_data_path, BLEUOutputFile_path, decoder_outputs_inference, decoder_ground_truth_outputs, params['preprocessing'])
 		return open(BLEUOutputFile_path,"r").read()
